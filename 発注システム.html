@@ -53,8 +53,8 @@ td:nth-child(4) { border-left: 0.5px solid #eee; font-weight: 500; }
 td:nth-child(5) { color: #888; border-right: 0.5px solid #eee; font-size: 11px; }
 td:nth-child(6) { border-left: 0.5px solid #eee; font-weight: 500; }
 td:nth-child(7) { color: #888; border-right: 0.5px solid #eee; font-size: 11px; }
-td:nth-child(8) { color: #888; font-size: 11px; }
-td:nth-child(9) { color: #888; font-size: 11px; }
+td:nth-child(8) { color: #888; border-left: 0.5px solid #eee; font-size: 11px; }
+td:nth-child(9) { color: #888; border-right: 0.5px solid #eee; font-size: 11px; }
 td:nth-child(12) { text-align: center; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: #fafafa; }
@@ -158,6 +158,8 @@ input.order-qty.has-value { background: #eafaf1; border-color: #1e8449; }
     <option value="avg">単純平均（通常時）</option>
     <option value="week">7日重視（季節の変わり目）</option>
     <option value="month">30日重視（セール直後）</option>
+    <option value="avg13">3ヶ月平均（JSONデータ必要）</option>
+    <option value="avg26">半年平均（JSONデータ必要）</option>
   </select>
   <label style="margin-left:8px;">表示</label>
   <select id="filter" onchange="renderOrderTable()">
@@ -175,24 +177,24 @@ input.order-qty.has-value { background: #eafaf1; border-color: #1e8449; }
 <table>
   <thead>
     <tr>
-      <th rowspan="2" class="sortable" onclick="sortBy('code')">SKUコード <span class="sort-arrow" id="arr-code">▲▼</span></th>
+      <th rowspan="2" class="sortable" onclick="sortBy('code')" style="width:90px;min-width:90px;max-width:90px;">SKUコード <span class="sort-arrow" id="arr-code">▲▼</span></th>
       <th rowspan="2" style="text-align:left;" class="resizable" id="th-name">商品名 <button class="col-filter-btn" id="name-filter-btn" onclick="toggleNameFilter(event)">▼</button><div class="resize-handle" onmousedown="startResize(event,'th-name')"></div></th>
-      <th rowspan="2" style="width:60px;">発注数</th>
-      <th rowspan="2" class="sortable" onclick="sortBy('zaiko')">在庫 <span class="sort-arrow" id="arr-zaiko">▲▼</span></th>
+      <th rowspan="2" style="width:52px;min-width:52px;max-width:52px;">発注数</th>
+      <th rowspan="2" class="sortable" onclick="sortBy('zaiko')" style="width:46px;min-width:46px;max-width:46px;">在庫 <span class="sort-arrow" id="arr-zaiko">▲▼</span></th>
       <th colspan="2" class="group-header">週</th>
       <th colspan="2" class="group-header">月</th>
-      <th class="group-header">3ヶ月平均週販</th>
-      <th class="group-header">半年平均週販</th>
-      <th rowspan="2" class="sortable" onclick="sortBy('remaining')">残週数 <span class="sort-arrow" id="arr-remaining">▲</span></th>
-      <th rowspan="2" class="sortable" onclick="sortBy('status')" style="text-align:center;">状態 <span class="sort-arrow" id="arr-status">▲▼</span></th>
+      <th class="group-header" style="border-left:0.5px solid #eee;border-right:0.5px solid #eee;">3ヶ月</th>
+      <th class="group-header" style="border-right:0.5px solid #eee;">半年</th>
+      <th rowspan="2" class="sortable" onclick="sortBy('remaining')" style="width:52px;min-width:52px;max-width:52px;">残週数 <span class="sort-arrow" id="arr-remaining">▲</span></th>
+      <th rowspan="2" class="sortable" onclick="sortBy('status')" style="width:68px;min-width:68px;max-width:68px;text-align:center;">状態 <span class="sort-arrow" id="arr-status">▲▼</span></th>
     </tr>
     <tr>
-      <th class="sortable sub" onclick="sortBy('total7')" style="border-left:0.5px solid #eee;">週計 <span class="sort-arrow" id="arr-total7">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('extra7')" style="border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra7">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('total30')" style="border-left:0.5px solid #eee;">月計 <span class="sort-arrow" id="arr-total30">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('extra30')" style="border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra30">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('avg13')" style="color:#888;font-size:11px;">週平均 <span class="sort-arrow" id="arr-avg13">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('avg26')" style="color:#888;font-size:11px;">週平均 <span class="sort-arrow" id="arr-avg26">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('total7')" style="width:46px;min-width:46px;max-width:46px;border-left:0.5px solid #eee;">週計 <span class="sort-arrow" id="arr-total7">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('extra7')" style="width:46px;min-width:46px;max-width:46px;border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra7">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('total30')" style="width:46px;min-width:46px;max-width:46px;border-left:0.5px solid #eee;">月計 <span class="sort-arrow" id="arr-total30">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('extra30')" style="width:46px;min-width:46px;max-width:46px;border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra30">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('avg13')" style="width:46px;min-width:46px;max-width:46px;border-left:0.5px solid #eee;">週平均 <span class="sort-arrow" id="arr-avg13">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('avg26')" style="width:46px;min-width:46px;max-width:46px;border-right:0.5px solid #eee;">週平均 <span class="sort-arrow" id="arr-avg26">▲▼</span></th>
     </tr>
   </thead>
   <tbody id="order-table-body">
@@ -480,6 +482,8 @@ function renderOrderTable() {
     const weekly30 = Math.round(d.total30 / 4.3);
     const weeklyRate = basisMode === 'week'  ? Math.round(d.total7 * 0.67 + weekly30 * 0.33)
                      : basisMode === 'month' ? Math.round(d.total7 * 0.33 + weekly30 * 0.67)
+                     : basisMode === 'avg13' ? (d.avg13 !== null ? Math.round(d.avg13) : Math.round((d.total7 + weekly30) / 2))
+                     : basisMode === 'avg26' ? (d.avg26 !== null ? Math.round(d.avg26) : Math.round((d.total7 + weekly30) / 2))
                      : Math.round((d.total7 + weekly30) / 2);
     const remaining = weeklyRate > 0 ? d.zaiko / weeklyRate : (d.zaiko > 0 ? 999 : 0);
     const isActive  = d.total7 > 0 || d.total30 > 0;
@@ -522,7 +526,7 @@ function renderOrderTable() {
     return typeof av === 'string' ? (sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)) : (sortAsc ? av - bv : bv - av);
   });
 
-  ['code','zaiko','total7','extra7','total30','extra30','remaining','status'].forEach(k => {
+  ['code','zaiko','total7','extra7','total30','extra30','avg13','avg26','remaining','status'].forEach(k => {
     const el = document.getElementById('arr-' + k);
     if (!el) return;
     el.textContent = sortKey === k ? (sortAsc ? '▲' : '▼') : '▲▼';
@@ -542,6 +546,8 @@ function renderOrderTable() {
     const setTag  = d.extra7 > 0 ? '<span class="set-tag">+set</span>' : '';
     const e7disp  = d.extra7  > 0 ? d.extra7  : '—';
     const e30disp = d.extra30 > 0 ? d.extra30 : '—';
+    const avg13disp = d.avg13 !== null ? d.avg13 : '—';
+    const avg26disp = d.avg26 !== null ? d.avg26 : '—';
     return `<tr>
       <td title="${d.code}">${d.code}</td>
       <td title="${d.name}">${d.name}${setTag}</td>
@@ -549,6 +555,7 @@ function renderOrderTable() {
       <td>${d.zaiko.toLocaleString()}</td>
       <td>${d.total7}</td><td>${e7disp}</td>
       <td>${d.total30}</td><td>${e30disp}</td>
+      <td>${avg13disp}</td><td>${avg26disp}</td>
       <td class="${remClass}">${remText}</td>
       <td>${badge}</td>
     </tr>`;
@@ -779,6 +786,8 @@ function exportCSV() {
     const weekly30 = Math.round(d.total30 / 4.3);
     const weeklyRate = basisModeEx === 'week'  ? Math.round(d.total7 * 0.67 + weekly30 * 0.33)
                      : basisModeEx === 'month' ? Math.round(d.total7 * 0.33 + weekly30 * 0.67)
+                     : basisModeEx === 'avg13' ? (d.avg13 !== null ? Math.round(d.avg13) : Math.round((d.total7 + weekly30) / 2))
+                     : basisModeEx === 'avg26' ? (d.avg26 !== null ? Math.round(d.avg26) : Math.round((d.total7 + weekly30) / 2))
                      : Math.round((d.total7 + weekly30) / 2);
     const remaining = weeklyRate > 0 ? d.zaiko / weeklyRate : 999;
     return { ...d, remaining };
