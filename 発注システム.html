@@ -170,6 +170,8 @@ input.order-qty.has-value { background: #eafaf1; border-color: #1e8449; }
       <th rowspan="2" class="sortable" onclick="sortBy('zaiko')">在庫 <span class="sort-arrow" id="arr-zaiko">▲▼</span></th>
       <th colspan="2" class="group-header">週</th>
       <th colspan="2" class="group-header">月</th>
+      <th class="group-header">3ヶ月平均週販</th>
+      <th class="group-header">半年平均週販</th>
       <th rowspan="2" class="sortable" onclick="sortBy('remaining')">残週数 <span class="sort-arrow" id="arr-remaining">▲</span></th>
       <th rowspan="2" class="sortable" onclick="sortBy('status')" style="text-align:center;">状態 <span class="sort-arrow" id="arr-status">▲▼</span></th>
     </tr>
@@ -178,10 +180,12 @@ input.order-qty.has-value { background: #eafaf1; border-color: #1e8449; }
       <th class="sortable sub" onclick="sortBy('extra7')" style="border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra7">▲▼</span></th>
       <th class="sortable sub" onclick="sortBy('total30')" style="border-left:0.5px solid #eee;">月計 <span class="sort-arrow" id="arr-total30">▲▼</span></th>
       <th class="sortable sub" onclick="sortBy('extra30')" style="border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra30">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('avg13')" style="color:#888;font-size:11px;">週平均 <span class="sort-arrow" id="arr-avg13">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('avg26')" style="color:#888;font-size:11px;">週平均 <span class="sort-arrow" id="arr-avg26">▲▼</span></th>
     </tr>
   </thead>
   <tbody id="order-table-body">
-    <tr><td colspan="10" class="empty">販売データCSVを読み込んでください</td></tr>
+    <tr><td colspan="12" class="empty">販売データCSVを読み込んでください</td></tr>
   </tbody>
 </table>
 </div>
@@ -521,7 +525,7 @@ function renderOrderTable() {
   });
 
   const tbody = document.getElementById('order-table-body');
-  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="10" class="empty">該当なし</td></tr>'; return; }
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="12" class="empty">該当なし</td></tr>'; return; }
 
   tbody.innerHTML = filtered.slice(0, 500).map(d => {
     const remText  = d.remaining === 999 ? '—' : Math.round(d.remaining) + '週';
