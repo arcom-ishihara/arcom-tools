@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>入荷照合ツール</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 14px; color: #1a1a1a; background: #f5f5f0; padding: 24px; }
+h1 { font-size: 18px; font-weight: 500; margin-bottom: 6px; }
+.subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+.card { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.card-title { font-size: 12px; font-weight: 500; color: #888; margin-bottom: 12px; }
+.card-title span { background: #1a1a1a; color: #fff; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-right: 6px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.file-label { font-size: 13px; padding: 6px 12px; border: 0.5px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
+.file-label:hover { background: #f5f5f5; }
+input[type=file] { display: none; }
+input[type=number] { font-size: 13px; border: 0.5px solid #ccc; border-radius: 6px; padding: 5px 8px; width: 60px; }
+select { font-size: 13px; border: 0.5px solid #ccc; border-radius: 6px; padding: 5px 8px; background: #fff; min-width: 120px; }
+.col-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; }
+.col-item label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; }
+.preview-box { background: #f9f9f9; border: 0.5px solid #eee; border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #555; margin-top: 10px; font-family: monospace; white-space: pre; overflow-x: auto; max-height: 70px; }
+.ok { color: #27ae60; font-size: 12px; }
+button { font-size: 13px; padding: 8px 16px; border: 0.5px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
+button:hover { background: #f5f5f5; }
+button.primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+button.primary:hover { background: #333; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+.btns { display: flex; gap: 8px; margin-bottom: 16px; }
+.status { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; }
+.status.error { color: #c0392b; }
+.status.success { color: #27ae60; }
+.summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+.stat { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; }
+.stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+.stat-value { font-size: 20px; font-weight: 500; }
+.danger { color: #c0392b; }
+.good { color: #27ae60; }
+.tbl-wrap { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+.tbl-head { padding: 12px 16px; font-size: 13px; font-weight: 500; border-bottom: 0.5px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { padding: 8px 10px; font-weight: 500; color: #888; text-align: right; border-bottom: 0.5px solid #eee; white-space: nowrap; }
+th.left { text-align: left; }
+td { padding: 8px 10px; border-bottom: 0.5px solid #f5f5f5; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+td.left { text-align: left; max-width: 240px; }
+tr:last-child td { border-bottom: none; }
+tr.diff td { background: #fffaf9; }
+tr.match-pair td { background: #f0faf5; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: #f5f5f5; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 5px; }
+.badge-ok { background: #eafaf1; color: #1e8449; }
+.badge-ng { background: #fdecea; color: #c0392b; }
+.badge-warn { background: #fef9e7; color: #d68910; }
+.pos { color: #c0392b; font-weight: 500; }
+.neg { color: #2980b9; font-weight: 500; }
+.match-label { font-size: 10px; background: #d5f5e3; color: #1e8449; padding: 1px 6px; border-radius: 3px; margin-left: 4px; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>入荷照合ツール</h1>
+<p class="subtitle">スキャンデータと請求書を突き合わせ、商品Noの新旧対応も金額・個数から自動推定します</p>
+
+<div class="card">
+  <div class="card-title"><span>1</span>スキャンデータ（Excel）</div>
+  <div class="row">
+    <label class="file-label">ファイルを選択<input type="file" id="f-scan" accept=".xlsx,.xls" onchange="onFile('scan',this)"></label>
+    <span class="ok" id="ok-scan"></span>
+  </div>
+  <div id="cfg-scan" class="hidden">
+    <div class="row">
+      <label style="font-size:13px;color:#555;">ヘッダー行</label>
+      <input type="number" id="hr-scan" value="3" min="1" max="30">
+      <label style="font-size:13px;color:#555;margin-left:8px;">データ開始行</label>
+      <input type="number" id="dr-scan" value="4" min="1" max="30">
+      <button onclick="applyConfig('scan')" style="font-size:12px;padding:5px 12px;">適用</button>
+    </div>
+    <div class="col-grid">
+      <div class="col-item"><label>商品No列</label><select id="c-scan-pno"></select></div>
+      <div class="col-item"><label>商品名列</label><select id="c-scan-name"></select></div>
+      <div class="col-item"><label>数量列</label><select id="c-scan-qty"></select></div>
+      <div class="col-item"><label>単価列</label><select id="c-scan-price"></select></div>
+      <div class="col-item"><label>金額列</label><select id="c-scan-amt"></select></div>
+    </div>
+    <div class="preview-box" id="pv-scan"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span>2</span>請求書（Excel）</div>
+  <div class="row">
+    <label class="file-label">ファイルを選択<input type="file" id="f-invoice" accept=".xlsx,.xls" onchange="onFile('invoice',this)"></label>
+    <span class="ok" id="ok-invoice"></span>
+  </div>
+  <div id="cfg-invoice" class="hidden">
+    <div class="row">
+      <label style="font-size:13px;color:#555;">ヘッダー行</label>
+      <input type="number" id="hr-invoice" value="2" min="1" max="30">
+      <label style="font-size:13px;color:#555;margin-left:8px;">データ開始行</label>
+      <input type="number" id="dr-invoice" value="3" min="1" max="30">
+      <button onclick="applyConfig('invoice')" style="font-size:12px;padding:5px 12px;">適用</button>
+    </div>
+    <div class="col-grid">
+      <div class="col-item"><label>商品No列</label><select id="c-invoice-pno"></select></div>
+      <div class="col-item"><label>商品名列</label><select id="c-invoice-name"></select></div>
+      <div class="col-item"><label>数量列</label><select id="c-invoice-qty"></select></div>
+      <div class="col-item"><label>単価列</label><select id="c-invoice-price"></select></div>
+      <div class="col-item"><label>金額列</label><select id="c-invoice-amt"></select></div>
+    </div>
+    <div class="preview-box" id="pv-invoice"></div>
+  </div>
+</div>
+
+<div class="btns">
+  <button class="primary" id="btn-analyze" onclick="analyze()" disabled>照合を実行</button>
+  <button onclick="resetAll()">リセット</button>
+</div>
+
+<div class="status" id="status">スキャンデータと請求書を読み込んでください</div>
+
+<div class="summary hidden" id="summary">
+  <div class="stat"><div class="stat-label">スキャン合計個数</div><div class="stat-value" id="v-s-qty">—</div></div>
+  <div class="stat"><div class="stat-label">請求書合計個数</div><div class="stat-value" id="v-i-qty">—</div></div>
+  <div class="stat"><div class="stat-label">個数差異</div><div class="stat-value" id="v-q-diff">—</div></div>
+  <div class="stat"><div class="stat-label">金額差異</div><div class="stat-value" id="v-a-diff">—</div></div>
+</div>
+
+<!-- ブランド別 -->
+<div class="tbl-wrap hidden" id="brand-wrap">
+  <div class="tbl-head"><span>ブランド別照合</span><span style="font-size:12px;color:#888;">差異ありをクリックで詳細</span></div>
+  <table><thead><tr>
+    <th class="left">ブランド</th>
+    <th>スキャン個数</th><th>請求個数</th><th>個数差</th>
+    <th>スキャン金額</th><th>請求金額</th><th>金額差</th>
+    <th>判定</th>
+  </tr></thead><tbody id="brand-body"></tbody></table>
+</div>
+
+<!-- 商品別詳細 -->
+<div class="tbl-wrap hidden" id="detail-wrap">
+  <div class="tbl-head">
+    <span id="detail-title">商品別詳細</span>
+    <button onclick="document.getElementById('detail-wrap').classList.add('hidden')" style="font-size:12px;padding:4px 10px;">閉じる</button>
+  </div>
+  <div style="font-size:12px;color:#888;padding:8px 16px;border-bottom:0.5px solid #eee;">
+    🟢 緑行 = 個数・単価一致のため商品No新旧対応と推定 　🟥 赤行 = 実際の差異の可能性あり
+  </div>
+  <table><thead><tr>
+    <th class="left">商品No</th><th class="left">商品名</th>
+    <th>スキャン数</th><th>請求数</th><th>個数差</th>
+    <th>スキャン単価</th><th>請求単価</th>
+    <th>スキャン金額</th><th>請求金額</th><th>金額差</th>
+  </tr></thead><tbody id="detail-body"></tbody></table>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const raw = {};
+
+function onFile(type, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    raw[type] = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+    document.getElementById('ok-' + type).textContent = '✓ ' + file.name;
+    document.getElementById('cfg-' + type).classList.remove('hidden');
+    applyConfig(type);
+    checkReady();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function colLetter(i) {
+  let s = ''; i++;
+  while (i > 0) { s = String.fromCharCode(64 + (i % 26 || 26)) + s; i = Math.floor((i-1)/26); }
+  return s;
+}
+
+function applyConfig(type) {
+  const rows = raw[type];
+  if (!rows) return;
+  const hr = parseInt(document.getElementById('hr-' + type).value) - 1;
+  const header = (rows[hr] || []);
+  const opts = '<option value="-1">（なし）</option>' +
+    header.map((h,i) => '<option value="' + i + '">' + colLetter(i) + ': ' + String(h).slice(0,12) + '</option>').join('');
+  ['pno','name','qty','price','amt'].forEach(col => {
+    const sel = document.getElementById('c-' + type + '-' + col);
+    const cur = sel.value;
+    sel.innerHTML = opts;
+    if (cur !== '-1') sel.value = cur;
+  });
+  autoDetect(type, header);
+  showPreview(type);
+}
+
+function autoDetect(type, header) {
+  const hl = header.map(h => String(h).toLowerCase().replace(/\s/g,''));
+  const find = (...kws) => { for (const kw of kws) { const i = hl.findIndex(h => h.includes(kw)); if (i>=0) return i; } return -1; };
+  const pno   = find('商品no','商品番号','品番');
+  const name  = find('商品名','品名');
+  const qty   = find('入荷\n個数','入荷個数','数量','数\n','：数');
+  const price = find('単価','定価');
+  const amt   = find('入荷小計','金額','合計');
+  if (pno   >= 0) document.getElementById('c-' + type + '-pno').value   = pno;
+  if (name  >= 0) document.getElementById('c-' + type + '-name').value  = name;
+  if (qty   >= 0) document.getElementById('c-' + type + '-qty').value   = qty;
+  if (price >= 0) document.getElementById('c-' + type + '-price').value = price;
+  if (amt   >= 0) document.getElementById('c-' + type + '-amt').value   = amt;
+}
+
+function showPreview(type) {
+  const rows = raw[type];
+  const dr    = parseInt(document.getElementById('dr-' + type).value) - 1;
+  const pnoC  = parseInt(document.getElementById('c-' + type + '-pno').value);
+  const nmC   = parseInt(document.getElementById('c-' + type + '-name').value);
+  const qtC   = parseInt(document.getElementById('c-' + type + '-qty').value);
+  const prC   = parseInt(document.getElementById('c-' + type + '-price').value);
+  const amC   = parseInt(document.getElementById('c-' + type + '-amt').value);
+  const lines = [];
+  for (let i = dr; i < Math.min(dr+3, rows.length); i++) {
+    const r = rows[i];
+    const p = pnoC>=0?r[pnoC]:''; const n = nmC>=0?r[nmC]:'';
+    const q = qtC>=0?r[qtC]:'';  const pr = prC>=0?r[prC]:''; const a = amC>=0?r[amC]:'';
+    if (!p && !n) continue;
+    lines.push('No:'+String(p).slice(0,8)+'  名:'+String(n).slice(0,16)+'  数:'+q+'  単価:'+pr+'  金額:'+a);
+  }
+  document.getElementById('pv-' + type).textContent = lines.join('\n') || '（データなし）';
+}
+
+function checkReady() {
+  document.getElementById('btn-analyze').disabled = !(raw.scan && raw.invoice);
+}
+
+function detectBrand(name) {
+  const n = String(name).toUpperCase();
+  const map = [
+    ['ALBION','アルビオン'],['CPB','クレドポーボーテ','クレドポ'],
+    ['COSME DECORTE','コスメデコルテ','DECORTE'],['IGNIS','イグニス'],
+    ['ELEGANCE','エレガンス'],['POLA','ポーラ'],['PREDIA','プレディア'],
+    ['KANEBO','カネボウ'],['TWANY','トワニー'],['BENEFIQUE','ベネフィーク'],
+    ['INUI','インウイ'],['SHISEIDO','資生堂'],
+  ];
+  for (const [brand, ...kws] of map) {
+    if (n.includes(brand) || kws.some(k => n.includes(k.toUpperCase()))) return brand;
+  }
+  return 'その他';
+}
+
+function parseData(type) {
+  const rows  = raw[type];
+  const dr    = parseInt(document.getElementById('dr-' + type).value) - 1;
+  const pnoC  = parseInt(document.getElementById('c-' + type + '-pno').value);
+  const nmC   = parseInt(document.getElementById('c-' + type + '-name').value);
+  const qtC   = parseInt(document.getElementById('c-' + type + '-qty').value);
+  const prC   = parseInt(document.getElementById('c-' + type + '-price').value);
+  const amC   = parseInt(document.getElementById('c-' + type + '-amt').value);
+  const result = {};
+  for (let i = dr; i < rows.length; i++) {
+    const r    = rows[i];
+    const pno  = String(r[pnoC]  || '').trim();
+    const name = String(r[nmC]   || '').trim();
+    const qty  = parseFloat(r[qtC])  || 0;
+    const price= parseFloat(r[prC])  || 0;
+    const amt  = parseFloat(r[amC])  || 0;
+    if (!pno || !name || qty <= 0) continue;
+    const brand = detectBrand(name);
+    if (!result[brand]) result[brand] = {};
+    if (!result[brand][pno]) result[brand][pno] = {name, qty:0, price, amt:0};
+    result[brand][pno].qty += qty;
+    result[brand][pno].amt += amt;
+    if (price > 0) result[brand][pno].price = price;
+  }
+  return result;
+}
+
+let scanResult = {}, invResult = {};
+
+function analyze() {
+  try {
+    scanResult = parseData('scan');
+    invResult  = parseData('invoice');
+    const sCnt = Object.values(scanResult).reduce((s,b)=>s+Object.values(b).reduce((x,v)=>x+v.qty,0),0);
+    const iCnt = Object.values(invResult).reduce((s,b)=>s+Object.values(b).reduce((x,v)=>x+v.qty,0),0);
+    if (sCnt === 0) throw new Error('スキャンデータを読み取れませんでした。設定を確認してください。');
+    if (iCnt === 0) throw new Error('請求書を読み取れませんでした。設定を確認してください。');
+    renderResults();
+    setStatus('照合完了', 'success');
+  } catch(e) {
+    setStatus('エラー: ' + e.message, 'error');
+  }
+}
+
+function renderResults() {
+  const allBrands = new Set([...Object.keys(scanResult), ...Object.keys(invResult)]);
+  let sTQ=0,iTQ=0,sTA=0,iTA=0;
+  const brandRows = [];
+  for (const brand of Array.from(allBrands).sort()) {
+    const sB = scanResult[brand]||{}, iB = invResult[brand]||{};
+    const sQ=Object.values(sB).reduce((s,v)=>s+v.qty,0);
+    const iQ=Object.values(iB).reduce((s,v)=>s+v.qty,0);
+    const sA=Object.values(sB).reduce((s,v)=>s+v.amt,0);
+    const iA=Object.values(iB).reduce((s,v)=>s+v.amt,0);
+    sTQ+=sQ;iTQ+=iQ;sTA+=sA;iTA+=iA;
+    brandRows.push({brand,sQ,iQ,sA,iA,qd:sQ-iQ,ad:sA-iA});
+  }
+  const qd=sTQ-iTQ, ad=sTA-iTA;
+  document.getElementById('v-s-qty').textContent=sTQ+'個';
+  document.getElementById('v-i-qty').textContent=iTQ+'個';
+  setDiff('v-q-diff',qd,'個');
+  setDiff('v-a-diff',Math.round(ad),'円',true);
+  document.getElementById('summary').classList.remove('hidden');
+
+  document.getElementById('brand-body').innerHTML = brandRows.map(r => {
+    const hasDiff = r.qd!==0 || Math.abs(r.ad)>10;
+    const badge = hasDiff?'<span class="badge badge-ng">差異あり</span>':'<span class="badge badge-ok">一致</span>';
+    return `<tr class="${hasDiff?'diff clickable':''}" ${hasDiff?'onclick="showDetail(\''+r.brand+'\')"':''}>
+      <td class="left">${r.brand}${hasDiff?' <span style="font-size:10px;color:#2980b9;">▶詳細</span>':''}</td>
+      <td>${r.sQ}</td><td>${r.iQ}</td>
+      <td class="${r.qd>0?'pos':r.qd<0?'neg':''}">${r.qd>0?'+':''}${r.qd}</td>
+      <td>${Math.round(r.sA).toLocaleString()}円</td>
+      <td>${Math.round(r.iA).toLocaleString()}円</td>
+      <td class="${Math.abs(r.ad)>10?(r.ad>0?'pos':'neg'):''}">${r.ad>0?'+':''}${Math.round(r.ad).toLocaleString()}円</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('brand-wrap').classList.remove('hidden');
+}
+
+function showDetail(brand) {
+  const sB = scanResult[brand]||{}, iB = invResult[brand]||{};
+  const allCodes = new Set([...Object.keys(sB),...Object.keys(iB)]);
+
+  // 片方にしかない商品を抽出して新旧対応を推定
+  const scanOnly = Object.entries(sB).filter(([c])=>!iB[c]).map(([c,d])=>({code:c,...d,side:'scan'}));
+  const invOnly  = Object.entries(iB).filter(([c])=>!sB[c]).map(([c,d])=>({code:c,...d,side:'inv'}));
+
+  // 個数・単価が一致するペアを推定
+  const matchedPairs = new Set();
+  const pairMap = {};
+  for (const s of scanOnly) {
+    for (const iv of invOnly) {
+      const priceMatch = s.price > 0 && iv.price > 0 && Math.abs(s.price - iv.price) < s.price * 0.05;
+      const qtyMatch   = s.qty === iv.qty;
+      if (priceMatch && qtyMatch && !matchedPairs.has(s.code) && !matchedPairs.has(iv.code)) {
+        matchedPairs.add(s.code);
+        matchedPairs.add(iv.code);
+        pairMap[s.code]  = iv.code;
+        pairMap[iv.code] = s.code;
+      }
+    }
+  }
+
+  // 全商品を行に変換
+  const rows = Array.from(allCodes).map(code => {
+    const s = sB[code], iv = iB[code];
+    return {
+      code,
+      name: s?.name || iv?.name || '',
+      sQty: s?.qty||0, iQty: iv?.qty||0,
+      sPrice: s?.price||0, iPrice: iv?.price||0,
+      sAmt: s?.amt||0, iAmt: iv?.amt||0,
+      qd: (s?.qty||0)-(iv?.qty||0),
+      ad: (s?.amt||0)-(iv?.amt||0),
+      isPaired: matchedPairs.has(code),
+      pairCode: pairMap[code]||null,
+    };
+  }).sort((a,b) => {
+    if (a.isPaired !== b.isPaired) return a.isPaired ? 1 : -1;
+    return Math.abs(b.ad) - Math.abs(a.ad);
+  });
+
+  document.getElementById('detail-title').textContent = brand + '　商品別詳細';
+  document.getElementById('detail-body').innerHTML = rows.map(r => {
+    const hasDiff = r.qd!==0 || Math.abs(r.ad)>10;
+    const rowClass = r.isPaired ? 'match-pair' : hasDiff ? 'diff' : '';
+    const pairLabel = r.isPaired ? '<span class="match-label">番号変更推定</span>' : '';
+    const qdc = r.qd>0?'pos':r.qd<0?'neg':'';
+    const adc = Math.abs(r.ad)>10?(r.ad>0?'pos':'neg'):'';
+    return `<tr class="${rowClass}">
+      <td class="left">${r.code}${pairLabel}</td>
+      <td class="left" title="${r.name}">${r.name.slice(0,30)}</td>
+      <td>${r.sQty||'—'}</td><td>${r.iQty||'—'}</td>
+      <td class="${qdc}">${r.qd>0?'+':''}${r.qd}</td>
+      <td>${r.sPrice?Math.round(r.sPrice).toLocaleString()+'円':'—'}</td>
+      <td>${r.iPrice?Math.round(r.iPrice).toLocaleString()+'円':'—'}</td>
+      <td>${r.sAmt?Math.round(r.sAmt).toLocaleString()+'円':'—'}</td>
+      <td>${r.iAmt?Math.round(r.iAmt).toLocaleString()+'円':'—'}</td>
+      <td class="${adc}">${r.ad>0?'+':''}${Math.round(r.ad).toLocaleString()}円</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('detail-wrap').classList.remove('hidden');
+  document.getElementById('detail-wrap').scrollIntoView({behavior:'smooth'});
+}
+
+function setDiff(id, val, unit, isMoney) {
+  const el = document.getElementById(id);
+  el.textContent = (val>0?'+':'')+( isMoney?val.toLocaleString():val)+unit;
+  el.className = 'stat-value '+(val===0?'good':'danger');
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status'+(cls?' '+cls:'');
+}
+
+function resetAll() {
+  ['scan','invoice'].forEach(t=>{
+    delete raw[t];
+    document.getElementById('ok-'+t).textContent='';
+    document.getElementById('f-'+t).value='';
+    document.getElementById('cfg-'+t).classList.add('hidden');
+  });
+  scanResult={}; invResult={};
+  document.getElementById('btn-analyze').disabled=true;
+  document.getElementById('summary').classList.add('hidden');
+  document.getElementById('brand-wrap').classList.add('hidden');
+  document.getElementById('detail-wrap').classList.add('hidden');
+  setStatus('スキャンデータと請求書を読み込んでください');
+}
+</script>
+</body>
+</html>

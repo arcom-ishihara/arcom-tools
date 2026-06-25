@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>発注判断補助ツール</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 14px; color: #1a1a1a; background: #f5f5f0; padding: 24px; }
+h1 { font-size: 18px; font-weight: 500; margin-bottom: 20px; }
+.tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 0.5px solid #ddd; }
+.tab { padding: 10px 24px; font-size: 13px; cursor: pointer; color: #888; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab.active { color: #1a1a1a; border-bottom: 2px solid #1a1a1a; font-weight: 500; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.stats { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; }
+.stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+.stat-value { font-size: 22px; font-weight: 500; }
+.stat-value.danger { color: #c0392b; }
+.file-area { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #555; }
+.file-area label { font-weight: 500; color: #333; }
+.ok { color: #27ae60; margin-left: 8px; }
+.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.controls label { font-size: 13px; color: #666; }
+input[type=range] { width: 100px; }
+select, input[type=text] { font-size: 13px; border: 0.5px solid #ccc; border-radius: 6px; padding: 5px 8px; background: #fff; color: #1a1a1a; }
+input[type=text] { width: 200px; }
+.threshold-out { font-size: 13px; font-weight: 500; min-width: 32px; }
+.table-wrap { overflow-x: auto; background: #fff; border: 0.5px solid #ddd; border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+#th-name { width: 200px; min-width: 80px; max-width: 600px; }
+thead tr:first-child th { border-bottom: 0.5px solid #eee; }
+thead tr:last-child th { border-bottom: 0.5px solid #e0e0e0; }
+th { padding: 7px 6px; font-weight: 500; color: #888; text-align: right; white-space: nowrap; user-select: none; }
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: #333; }
+th.group-header { text-align: center; font-size: 11px; color: #aaa; border-left: 0.5px solid #eee; border-right: 0.5px solid #eee; }
+th.sub { font-size: 11px; color: #aaa; }
+th:nth-child(1) { width: 110px; text-align: left; }
+th:nth-child(2) { text-align: left; }
+th:nth-child(3) { width: 52px; }
+th:nth-child(4) { width: 52px; border-left: 0.5px solid #eee; }
+th:nth-child(5) { width: 58px; border-right: 0.5px solid #eee; }
+th:nth-child(6) { width: 52px; border-left: 0.5px solid #eee; }
+th:nth-child(7) { width: 58px; border-right: 0.5px solid #eee; }
+th:nth-child(8) { width: 52px; }
+th:nth-child(9) { width: 72px; text-align: center; }
+td { padding: 7px 6px; border-bottom: 0.5px solid #f0f0f0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+td:nth-child(1) { text-align: left; font-family: monospace; font-size: 11px; color: #888; }
+td:nth-child(2) { text-align: left; }
+td:nth-child(4) { border-left: 0.5px solid #eee; font-weight: 500; }
+td:nth-child(5) { color: #888; border-right: 0.5px solid #eee; font-size: 11px; }
+td:nth-child(6) { border-left: 0.5px solid #eee; font-weight: 500; }
+td:nth-child(7) { color: #888; border-right: 0.5px solid #eee; font-size: 11px; }
+td:nth-child(9) { text-align: center; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafafa; }
+.badge { font-size: 11px; padding: 2px 6px; border-radius: 5px; white-space: nowrap; }
+.badge-danger { background: #fdecea; color: #c0392b; }
+.badge-warning { background: #fef9e7; color: #d68910; }
+.badge-success { background: #eafaf1; color: #1e8449; }
+.badge-muted { background: #f5f5f5; color: #999; }
+.badge-up { background: #eafaf1; color: #1e8449; }
+.badge-down { background: #fdecea; color: #c0392b; }
+.rem-danger { color: #c0392b; font-weight: 500; }
+.rem-warning { color: #d68910; font-weight: 500; }
+.set-tag { font-size: 10px; color: #aaa; margin-left: 3px; }
+.btns { margin-top: 14px; display: flex; gap: 8px; }
+button { font-size: 13px; padding: 7px 14px; border: 0.5px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; color: #333; }
+button:hover { background: #f5f5f5; }
+.empty { padding: 40px; text-align: center; color: #aaa; }
+input[type=file] { font-size: 12px; }
+.sort-arrow { font-size: 9px; margin-left: 2px; color: #ccc; }
+.resizable { position: relative; }
+.resizable .resize-handle {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: 5px; cursor: col-resize; user-select: none;
+  background: transparent;
+}
+.resizable .resize-handle:hover { background: rgba(0,0,0,0.1); }
+.sort-arrow.active { color: #333; }
+.col-filter-btn { font-size: 10px; background: none; border: none; cursor: pointer; padding: 0 2px; color: #bbb; vertical-align: middle; }
+.col-filter-btn.active { color: #2980b9; }
+.filter-popup { display: none; position: fixed; background: #fff; border: 0.5px solid #ccc; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 1000; padding: 10px; min-width: 220px; max-height: 320px; flex-direction: column; gap: 6px; }
+.filter-popup.open { display: flex; }
+.filter-popup input[type=text] { width: 100%; font-size: 12px; }
+.filter-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 2px; max-height: 220px; }
+.filter-list label { font-size: 12px; display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.filter-list label:hover { background: #f5f5f5; }
+.filter-popup-btns { display: flex; gap: 6px; }
+.filter-popup-btns button { flex: 1; font-size: 12px; padding: 5px 8px; }
+.week-info { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; font-size: 13px; }
+.week-info-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.week-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.week-chip { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: #f0f0f0; color: #555; }
+.week-chip.latest { background: #1a1a1a; color: #fff; }
+.trend-cell { text-align: right; }
+.trend-up { color: #1e8449; font-weight: 500; }
+.trend-down { color: #c0392b; font-weight: 500; }
+.trend-flat { color: #888; }
+.storage-bar { font-size: 12px; color: #888; margin-top: 8px; }
+input.order-qty { width: 52px; font-size: 12px; text-align: right; border: 0.5px solid #ccc; border-radius: 4px; padding: 2px 4px; }
+input.order-qty:focus { outline: none; border-color: #2980b9; }
+input.order-qty.has-value { background: #eafaf1; border-color: #1e8449; }
+</style>
+</head>
+<body>
+<h1>発注判断補助ツール</h1>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('order')">発注判断</div>
+  <div class="tab" onclick="switchTab('trend')">週次推移</div>
+</div>
+
+<!-- 発注判断タブ -->
+<div id="tab-order" class="tab-content active">
+<div class="stats">
+  <div class="stat"><div class="stat-label">総SKU数</div><div class="stat-value" id="stat-total">—</div></div>
+  <div class="stat"><div class="stat-label">販売中SKU</div><div class="stat-value" id="stat-active">—</div></div>
+  <div class="stat"><div class="stat-label">要発注（閾値以内）</div><div class="stat-value danger" id="stat-urgent">—</div></div>
+  <div class="stat"><div class="stat-label">在庫切れ</div><div class="stat-value danger" id="stat-zero">—</div></div>
+  <div class="stat"><div class="stat-label">🔴 早急に要改善</div><div class="stat-value danger" id="stat-critical">—</div></div>
+  <div class="stat"><div class="stat-label">🟡 要改善</div><div class="stat-value" id="stat-warning">—</div></div>
+  <div class="stat"><div class="stat-label">🟢 余裕あれば要改善</div><div class="stat-value" id="stat-mild">—</div></div>
+</div>
+
+<div class="file-area">
+  <div>
+    <label>販売データCSV</label>
+    <input type="file" id="sales-file" accept=".csv" onchange="loadSales(this.files[0])">
+    <span class="ok" id="sales-status"></span>
+  </div>
+  <div>
+    <label>セット連携CSV</label>
+    <input type="file" id="set-file" accept=".csv" onchange="loadSet(this.files[0])">
+    <span class="ok" id="set-status"></span>
+  </div>
+</div>
+
+<div class="controls">
+  <label>発注閾値</label>
+  <input type="range" min="1" max="8" value="2" id="threshold" step="1" oninput="document.getElementById('threshold-out').textContent=this.value+'週'; renderOrderTable()">
+  <span class="threshold-out" id="threshold-out">2週</span>
+  <label style="margin-left:8px;">残週数の計算</label>
+  <select id="basis-mode" onchange="renderOrderTable()">
+    <option value="avg">単純平均（通常時）</option>
+    <option value="week">7日重視（季節の変わり目）</option>
+    <option value="month">30日重視（セール直後）</option>
+  </select>
+  <label style="margin-left:8px;">表示</label>
+  <select id="filter" onchange="renderOrderTable()">
+    <option value="urgent">要発注のみ</option>
+    <option value="active">販売中全件</option>
+    <option value="all">全SKU</option>
+    <option value="critical">🔴 マジで早急に要改善</option>
+    <option value="warning">🟡 要改善</option>
+    <option value="mild">🟢 余裕あれば要改善</option>
+  </select>
+  <input type="text" id="search" placeholder="商品名 / SKUコードで絞り込み" oninput="renderOrderTable()">
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th rowspan="2" class="sortable" onclick="sortBy('code')">SKUコード <span class="sort-arrow" id="arr-code">▲▼</span></th>
+      <th rowspan="2" style="text-align:left;" class="resizable" id="th-name">商品名 <button class="col-filter-btn" id="name-filter-btn" onclick="toggleNameFilter(event)">▼</button><div class="resize-handle" onmousedown="startResize(event,'th-name')"></div></th>
+      <th rowspan="2" style="width:60px;">発注数</th>
+      <th rowspan="2" class="sortable" onclick="sortBy('zaiko')">在庫 <span class="sort-arrow" id="arr-zaiko">▲▼</span></th>
+      <th colspan="2" class="group-header">週</th>
+      <th colspan="2" class="group-header">月</th>
+      <th rowspan="2" class="sortable" onclick="sortBy('remaining')">残週数 <span class="sort-arrow" id="arr-remaining">▲</span></th>
+      <th rowspan="2" class="sortable" onclick="sortBy('status')" style="text-align:center;">状態 <span class="sort-arrow" id="arr-status">▲▼</span></th>
+    </tr>
+    <tr>
+      <th class="sortable sub" onclick="sortBy('total7')" style="border-left:0.5px solid #eee;">週計 <span class="sort-arrow" id="arr-total7">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('extra7')" style="border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra7">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('total30')" style="border-left:0.5px solid #eee;">月計 <span class="sort-arrow" id="arr-total30">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('extra30')" style="border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra30">▲▼</span></th>
+    </tr>
+  </thead>
+  <tbody id="order-table-body">
+    <tr><td colspan="10" class="empty">販売データCSVを読み込んでください</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="btns">
+  <button onclick="exportCSV()" id="export-btn" style="display:none;">要発注リストをCSV出力</button>
+  <button onclick="exportOrderExcel()" id="order-excel-btn" style="display:none;">発注書をExcel出力</button>
+  <button onclick="clearOrderQty()" id="clear-order-btn" style="display:none;">発注数をリセット</button>
+</div>
+</div>
+
+<!-- 週次推移タブ -->
+<div id="tab-trend" class="tab-content">
+<div class="week-info">
+  <div class="week-info-row">
+    <span style="font-size:13px;font-weight:500;">蓄積データ</span>
+    <div class="week-chips" id="week-chips"><span style="color:#aaa;font-size:12px;">データなし</span></div>
+    <div style="display:flex;gap:6px;margin-left:auto;">
+      <label style="font-size:12px;padding:4px 10px;border:0.5px solid #ccc;border-radius:6px;background:#fff;cursor:pointer;">
+        JSONをインポート
+        <input type="file" id="json-import" accept=".json" onchange="importJSON(this.files[0])" style="display:none;">
+      </label>
+      <button onclick="exportJSON()" style="font-size:12px;padding:4px 10px;">JSONをエクスポート</button>
+      <button onclick="clearStorage()" style="font-size:12px;padding:4px 10px;">データをリセット</button>
+    </div>
+  </div>
+  <div class="storage-bar" id="storage-bar"></div>
+</div>
+
+<div class="controls">
+  <label>表示週数</label>
+  <select id="trend-weeks" onchange="renderTrendTable()">
+    <option value="4">直近4週</option>
+    <option value="8">直近8週</option>
+    <option value="12">直近12週</option>
+  </select>
+  <label style="margin-left:8px;">フラグ</label>
+  <select id="trend-filter" onchange="renderTrendTable()">
+    <option value="all">全件</option>
+    <option value="up">急増のみ</option>
+    <option value="down">急減のみ</option>
+    <option value="flagged">急増・急減</option>
+  </select>
+  <input type="text" id="trend-search" placeholder="商品名 / SKUコードで絞り込み" oninput="renderTrendTable()" style="width:200px;">
+</div>
+
+<div class="table-wrap">
+  <table id="trend-table">
+    <thead id="trend-thead"></thead>
+    <tbody id="trend-tbody">
+      <tr><td colspan="5" class="empty">販売データを読み込むと週次推移が表示されます</td></tr>
+    </tbody>
+  </table>
+</div>
+</div>
+
+<div class="filter-popup" id="name-filter-popup">
+  <input type="text" id="name-filter-search" placeholder="商品名を検索..." oninput="renderNameFilterList()">
+  <div class="filter-list" id="name-filter-list"></div>
+  <div class="filter-popup-btns">
+    <button onclick="selectAllNames()">全選択</button>
+    <button onclick="clearAllNames()">全解除</button>
+    <button onclick="applyNameFilter()">適用</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'hacchujo_weekly';
+const MAX_WEEKS = 12;
+
+let salesData = {}, setMap = {}, allData = [], parentCodes = new Set();
+let orderQty = {};
+let sortKey = 'remaining', sortAsc = true;
+let selectedNames = new Set(), nameFilterActive = false;
+let weeklyHistory = [];
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['order','trend'][i] === name));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'trend') renderTrendTable();
+}
+
+function parseCSVText(text) {
+  const lines = text.trim().split('\n');
+  const parse = line => {
+    line = line.replace(/\r$/, '');
+    const result = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (c === ',' && !inQ) {
+        result.push(cur); cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    result.push(cur);
+    return result;
+  };
+  return lines.map(parse);
+}
+
+function decodeCSV(file, cb) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const buf = e.target.result;
+    const bytes = new Uint8Array(buf);
+    let decoded;
+    if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+      decoded = new TextDecoder('utf-8').decode(buf).slice(1);
+    } else {
+      decoded = new TextDecoder('shift-jis').decode(buf);
+    }
+    cb(parseCSVText(decoded));
+  };
+  // readAsArrayBufferの代わりにreadAsTextも試みる
+  try {
+    reader.readAsArrayBuffer(file);
+  } catch(e) {
+    // フォールバック
+    const r2 = new FileReader();
+    r2.onload = ev => cb(parseCSVText(ev.target.result));
+    r2.readAsText(file, 'shift-jis');
+  }
+}
+
+function loadSales(file) {
+  if (!file) return;
+  decodeCSV(file, rows => {
+    salesData = {};
+    const n = s => parseInt(s) || 0;
+    const f = s => parseFloat(s) || 0;
+    let dateStr = '';
+    // 列インデックスをヘッダーから動的に取得
+    const header = rows[0];
+    const nameCol  = header.findIndex(h => h === '商品名');
+    const zaikoCol = header.findIndex(h => h === '現在在庫数');
+    const janCol   = header.findIndex(h => h === 'メモ');
+    const priceCol = header.findIndex(h => h === 'メモ2');
+    const rateCol  = header.findIndex(h => h === 'メモ3');
+    // 過去7日・30日の販売数列を動的に取得
+    const uri7Cols  = header.map((h,i) => h.includes('過去7日間販売数')  ? i : -1).filter(i => i >= 0);
+    const uri30Cols = header.map((h,i) => h.includes('過去30日間販売数') ? i : -1).filter(i => i >= 0);
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (r.length < 10) continue;
+      if (!dateStr && r[0]) dateStr = r[0].trim();
+      salesData[r[1]] = {
+        name:  r[nameCol]  || '',
+        zaiko: n(r[zaikoCol]),
+        jan:   (r[janCol]  || '').trim(),
+        price: f(r[priceCol]),
+        rate:  f(r[rateCol]),
+        uri7:  uri7Cols.reduce((s,j)  => s + n(r[j]), 0),
+        uri30: uri30Cols.reduce((s,j) => s + n(r[j]), 0),
+      };
+    }
+    document.getElementById('sales-status').textContent = '✓ ' + Object.keys(salesData).length + '件';
+    selectedNames = new Set(); nameFilterActive = false;
+    document.getElementById('name-filter-btn').classList.remove('active');
+    saveWeeklySnapshot(dateStr);
+    compute();
+  });
+}
+
+function saveWeeklySnapshot(dateStr) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const weekKey = dateStr || new Date().toISOString().slice(0,10);
+    const existing = stored.findIndex(w => w.date === weekKey);
+    const snapshot = { date: weekKey, data: {} };
+    for (const [code, d] of Object.entries(salesData)) {
+      snapshot.data[code] = { name: d.name, total7: d.uri7 };
+    }
+    if (existing >= 0) stored[existing] = snapshot;
+    else stored.push(snapshot);
+    stored.sort((a,b) => a.date.localeCompare(b.date));
+    while (stored.length > MAX_WEEKS) stored.shift();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    weeklyHistory = stored;
+    updateWeekChips();
+  } catch(e) { console.error(e); }
+}
+
+function loadStorage() {
+  try {
+    weeklyHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    updateWeekChips();
+  } catch(e) { weeklyHistory = []; }
+}
+
+function updateWeekChips() {
+  const el = document.getElementById('week-chips');
+  if (!weeklyHistory.length) { el.innerHTML = '<span style="color:#aaa;font-size:12px;">データなし</span>'; return; }
+  el.innerHTML = weeklyHistory.map((w,i) =>
+    `<span class="week-chip ${i === weeklyHistory.length-1 ? 'latest' : ''}">${w.date}</span>`
+  ).join('');
+  const bytes = (localStorage.getItem(STORAGE_KEY) || '').length * 2;
+  document.getElementById('storage-bar').textContent = `${weeklyHistory.length}週分保存済 / 最大12週`;
+}
+
+function clearStorage() {
+  if (!confirm('蓄積データをすべて削除しますか？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  weeklyHistory = [];
+  updateWeekChips();
+  renderTrendTable();
+}
+
+function loadSet(file) {
+  if (!file) return;
+  decodeCSV(file, rows => {
+    setMap = {}; parentCodes = new Set();
+    if (!rows.length) return;
+    const header = rows[0];
+    const childCodeCols = [];
+    const childQtyCols  = [];
+    header.forEach((h, i) => {
+      const hStr = h.replace(/\s/g, '');
+      if (/^子商品\d+マスターコード$/.test(hStr)) childCodeCols.push(i);
+      if (/^子商品\d+構成数$/.test(hStr))         childQtyCols.push(i);
+    });
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const parent = r[0];
+      if (!parent) continue;
+      parentCodes.add(parent);
+      for (let j = 0; j < childCodeCols.length; j++) {
+        const child = (r[childCodeCols[j]] || '').trim();
+        const qty   = parseInt(r[childQtyCols[j]]) || 0;
+        if (child && qty) {
+          if (!setMap[child]) setMap[child] = [];
+          setMap[child].push({ parent, qty });
+        }
+      }
+    }
+    document.getElementById('set-status').textContent = '✓ ' + (rows.length-1) + '件';
+    compute();
+  });
+}
+
+function compute() {
+  if (!Object.keys(salesData).length) return;
+  allData = [];
+  const hideCodes = new Set([...parentCodes]);
+  for (const [code, d] of Object.entries(salesData)) {
+    let extra7 = 0, extra30 = 0;
+    for (const { parent, qty } of (setMap[code] || [])) {
+      if (salesData[parent]) {
+        extra7  += salesData[parent].uri7  * qty;
+        extra30 += salesData[parent].uri30 * qty;
+      }
+    }
+    allData.push({
+      code, name: d.name, zaiko: d.zaiko,
+      uri7: d.uri7, uri30: d.uri30,
+      extra7, extra30,
+      total7:  d.uri7  + extra7,
+      total30: d.uri30 + extra30,
+      isHidden: hideCodes.has(code),
+    });
+  }
+  document.getElementById('export-btn').style.display = 'inline-block';
+  document.getElementById('order-excel-btn').style.display = 'inline-block';
+  document.getElementById('clear-order-btn').style.display = 'inline-block';
+  renderOrderTable();
+}
+
+function statusOrder(d, thr) {
+  if (d.zaiko === 0 && d.isActive) return 0;
+  if (d.isActive && d.remaining <= thr && d.remaining < 999) return 1;
+  if (d.isActive) return 2;
+  return 3;
+}
+
+function renderOrderTable() {
+  if (!allData.length) return;
+  const thr    = parseInt(document.getElementById('threshold').value);
+  const filter = document.getElementById('filter').value;
+  const search = document.getElementById('search').value.toLowerCase();
+  let urgent = 0, zero = 0, active = 0, critical = 0, warning = 0, mild = 0;
+
+  const basisMode = document.getElementById('basis-mode').value;
+  const rows = allData.map(d => {
+    const weekly30 = Math.round(d.total30 / 4.3);
+    const weeklyRate = basisMode === 'week'  ? Math.round(d.total7 * 0.67 + weekly30 * 0.33)
+                     : basisMode === 'month' ? Math.round(d.total7 * 0.33 + weekly30 * 0.67)
+                     : Math.round((d.total7 + weekly30) / 2);
+    const remaining = weeklyRate > 0 ? d.zaiko / weeklyRate : (d.zaiko > 0 ? 999 : 0);
+    const isActive  = d.total7 > 0 || d.total30 > 0;
+    if (!d.isHidden) {
+      if (isActive) active++;
+      if (d.zaiko === 0 && isActive) zero++;
+      if (remaining <= thr && isActive) urgent++;
+      if (d.zaiko > 0 && d.total30 === 0) critical++;
+      if (d.zaiko > 0 && d.total7 === 0 && remaining > 52) warning++;
+      if (d.zaiko > 0 && remaining > 26 && remaining < 9999) mild++;
+    }
+    return { ...d, remaining, isActive };
+  });
+
+  document.getElementById('stat-total').textContent    = allData.filter(d => !d.isHidden).length.toLocaleString();
+  document.getElementById('stat-active').textContent   = active.toLocaleString();
+  document.getElementById('stat-urgent').textContent   = urgent.toLocaleString();
+  document.getElementById('stat-zero').textContent     = zero.toLocaleString();
+  document.getElementById('stat-critical').textContent = critical.toLocaleString();
+  document.getElementById('stat-warning').textContent  = warning.toLocaleString();
+  document.getElementById('stat-mild').textContent     = mild.toLocaleString();
+
+  let filtered = rows.filter(d => {
+    if (d.isHidden) return false;
+    if (filter === 'urgent') return d.isActive && d.remaining <= thr;
+    if (filter === 'active') return d.isActive;
+    // 要改善：在庫あり（zaiko>0）で販売数が少ない商品
+    if (filter === 'critical') return d.zaiko > 0 && d.total30 === 0; // 過去30日販売ゼロ
+    if (filter === 'warning')  return d.zaiko > 0 && d.total7 === 0 && d.remaining > 52; // 残1年以上
+    if (filter === 'mild')     return d.zaiko > 0 && d.remaining > 26 && d.remaining < 9999; // 残半年以上
+    return true;
+  });
+  if (search) filtered = filtered.filter(d => d.name.toLowerCase().includes(search) || d.code.toLowerCase().includes(search));
+  if (nameFilterActive && selectedNames.size) filtered = filtered.filter(d => selectedNames.has(d.name));
+
+  filtered.sort((a, b) => {
+    let av = sortKey === 'status' ? statusOrder(a, thr) : sortKey === 'code' ? a.code : a[sortKey];
+    let bv = sortKey === 'status' ? statusOrder(b, thr) : sortKey === 'code' ? b.code : b[sortKey];
+    if (av === bv) return 0;
+    return typeof av === 'string' ? (sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)) : (sortAsc ? av - bv : bv - av);
+  });
+
+  ['code','zaiko','total7','extra7','total30','extra30','remaining','status'].forEach(k => {
+    const el = document.getElementById('arr-' + k);
+    if (!el) return;
+    el.textContent = sortKey === k ? (sortAsc ? '▲' : '▼') : '▲▼';
+    el.className = 'sort-arrow' + (sortKey === k ? ' active' : '');
+  });
+
+  const tbody = document.getElementById('order-table-body');
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="10" class="empty">該当なし</td></tr>'; return; }
+
+  tbody.innerHTML = filtered.slice(0, 500).map(d => {
+    const remText  = d.remaining === 999 ? '—' : Math.round(d.remaining) + '週';
+    const remClass = d.remaining <= 1 && d.isActive ? 'rem-danger' : d.remaining <= thr && d.isActive ? 'rem-warning' : '';
+    const badge    = d.zaiko === 0 && d.isActive ? '<span class="badge badge-danger">在庫切れ</span>'
+                   : d.isActive && d.remaining <= thr && d.remaining < 999 ? '<span class="badge badge-warning">要発注</span>'
+                   : d.isActive ? '<span class="badge badge-success">余裕あり</span>'
+                   : '<span class="badge badge-muted">動きなし</span>';
+    const setTag  = d.extra7 > 0 ? '<span class="set-tag">+set</span>' : '';
+    const e7disp  = d.extra7  > 0 ? d.extra7  : '—';
+    const e30disp = d.extra30 > 0 ? d.extra30 : '—';
+    return `<tr>
+      <td title="${d.code}">${d.code}</td>
+      <td title="${d.name}">${d.name}${setTag}</td>
+      <td><input type="number" class="order-qty${orderQty[d.code] ? ' has-value' : ''}" min="0" value="${orderQty[d.code] || ''}" placeholder="" oninput="setOrderQty('${d.code}', this.value, this)" onchange="setOrderQty('${d.code}', this.value, this)"></td>
+      <td>${d.zaiko.toLocaleString()}</td>
+      <td>${d.total7}</td><td>${e7disp}</td>
+      <td>${d.total30}</td><td>${e30disp}</td>
+      <td class="${remClass}">${remText}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortBy(key) {
+  sortAsc = sortKey === key ? !sortAsc : key === 'remaining';
+  sortKey = key;
+  renderOrderTable();
+}
+
+function renderTrendTable() {
+  if (!weeklyHistory.length) {
+    document.getElementById('trend-thead').innerHTML = '';
+    document.getElementById('trend-tbody').innerHTML = '<tr><td colspan="5" class="empty">販売データを読み込むと週次推移が表示されます</td></tr>';
+    return;
+  }
+
+  const nWeeks    = parseInt(document.getElementById('trend-weeks').value);
+  const tFilter   = document.getElementById('trend-filter').value;
+  const tSearch   = document.getElementById('trend-search').value.toLowerCase();
+  const weeks     = weeklyHistory.slice(-nWeeks);
+  const latestIdx = weeks.length - 1;
+
+  // 全SKUを収集
+  const allCodes = new Set();
+  weeks.forEach(w => Object.keys(w.data).forEach(c => allCodes.add(c)));
+
+  // 各SKUの週次データを構築
+  const rows = [];
+  for (const code of allCodes) {
+    const name = weeks.map(w => w.data[code]?.name).filter(Boolean).pop() || code;
+    const vals = weeks.map(w => w.data[code]?.total7 ?? null);
+    const latest = vals[latestIdx];
+    const prev   = vals[latestIdx - 1];
+
+    // 足切り：直近週計3未満はフラグ対象外
+    let flag = '';
+    if (latest !== null && prev !== null && latest >= 3) {
+      const ratio = prev === 0 ? (latest > 0 ? Infinity : 0) : (latest - prev) / prev;
+      if (ratio >= 0.5)       flag = 'up';
+      else if (ratio <= -0.5) flag = 'down';
+    }
+
+    if (tFilter === 'up'      && flag !== 'up')   continue;
+    if (tFilter === 'down'    && flag !== 'down')  continue;
+    if (tFilter === 'flagged' && !flag)            continue;
+    if (tSearch && !name.toLowerCase().includes(tSearch) && !code.toLowerCase().includes(tSearch)) continue;
+
+    rows.push({ code, name, vals, flag, latest: latest ?? 0 });
+  }
+
+  rows.sort((a, b) => {
+    if (a.flag && !b.flag) return -1;
+    if (!a.flag && b.flag) return 1;
+    return b.latest - a.latest;
+  });
+
+  // ヘッダー
+  const thWeeks = weeks.map((w, i) =>
+    `<th style="text-align:right;width:60px;${i===latestIdx?'font-weight:500;color:#1a1a1a;':''}">${w.date.slice(5)}</th>`
+  ).join('');
+  document.getElementById('trend-thead').innerHTML = `<tr>
+    <th style="width:110px;text-align:left;">SKUコード</th>
+    <th style="text-align:left;">商品名</th>
+    ${thWeeks}
+    <th style="width:60px;text-align:center;">前週比</th>
+  </tr>`;
+
+  if (!rows.length) {
+    document.getElementById('trend-tbody').innerHTML = '<tr><td colspan="' + (weeks.length+3) + '" class="empty">該当なし</td></tr>';
+    return;
+  }
+
+  document.getElementById('trend-tbody').innerHTML = rows.slice(0, 300).map(d => {
+    const latest = d.vals[latestIdx];
+    const prev   = d.vals[latestIdx - 1];
+    let ratioDisp = '—', ratioClass = 'trend-flat', flagBadge = '';
+    if (latest !== null && prev !== null) {
+      if (prev === 0 && latest > 0) { ratioDisp = '新規'; ratioClass = 'trend-up'; }
+      else if (prev === 0) { ratioDisp = '—'; }
+      else {
+        const pct = Math.round((latest - prev) / prev * 100);
+        ratioDisp = (pct > 0 ? '+' : '') + pct + '%';
+        ratioClass = pct >= 50 ? 'trend-up' : pct <= -50 ? 'trend-down' : 'trend-flat';
+      }
+    }
+    if (d.flag === 'up')   flagBadge = ' <span class="badge badge-up">急増</span>';
+    if (d.flag === 'down') flagBadge = ' <span class="badge badge-down">急減</span>';
+
+    const tdWeeks = d.vals.map((v, i) => {
+      const style = i === latestIdx ? 'font-weight:500;' : 'color:#888;';
+      return `<td style="text-align:right;${style}">${v !== null ? v : '—'}</td>`;
+    }).join('');
+
+    return `<tr>
+      <td style="font-family:monospace;font-size:11px;color:#888;" title="${d.code}">${d.code}</td>
+      <td title="${d.name}">${d.name}${flagBadge}</td>
+      ${tdWeeks}
+      <td style="text-align:center;" class="${ratioClass}">${ratioDisp}</td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleNameFilter(e) {
+  e.stopPropagation();
+  const popup = document.getElementById('name-filter-popup');
+  const rect  = e.target.getBoundingClientRect();
+  if (popup.classList.contains('open')) { popup.classList.remove('open'); return; }
+  popup.style.top  = (rect.bottom + 4) + 'px';
+  popup.style.left = rect.left + 'px';
+  popup.classList.add('open');
+  document.getElementById('name-filter-search').value = '';
+  renderNameFilterList();
+}
+
+function renderNameFilterList() {
+  const q     = document.getElementById('name-filter-search').value.toLowerCase();
+  const names = [...new Set(allData.map(d => d.name))].sort();
+  document.getElementById('name-filter-list').innerHTML =
+    (q ? names.filter(n => n.toLowerCase().includes(q)) : names).map(n => {
+      const checked = !nameFilterActive || selectedNames.has(n);
+      return `<label><input type="checkbox" value="${n.replace(/"/g,'&quot;')}" ${checked?'checked':''}> ${n}</label>`;
+    }).join('');
+}
+
+function selectAllNames() { document.querySelectorAll('#name-filter-list input').forEach(cb => cb.checked = true); }
+function clearAllNames()  { document.querySelectorAll('#name-filter-list input').forEach(cb => cb.checked = false); }
+
+function applyNameFilter() {
+  const checked = [...document.querySelectorAll('#name-filter-list input:checked')].map(cb => cb.value);
+  const all     = [...new Set(allData.map(d => d.name))];
+  nameFilterActive = checked.length < all.length;
+  selectedNames    = new Set(checked);
+  document.getElementById('name-filter-btn').classList.toggle('active', nameFilterActive);
+  document.getElementById('name-filter-popup').classList.remove('open');
+  renderOrderTable();
+}
+
+document.addEventListener('click', e => {
+  if (!document.getElementById('name-filter-popup').contains(e.target) && e.target.id !== 'name-filter-btn')
+    document.getElementById('name-filter-popup').classList.remove('open');
+});
+
+function setOrderQty(code, val, el) {
+  const n = parseInt(val);
+  if (val === '' || isNaN(n) || n <= 0) {
+    delete orderQty[code];
+    el.classList.remove('has-value');
+  } else {
+    orderQty[code] = n;
+    el.classList.add('has-value');
+  }
+}
+
+function clearOrderQty() {
+  if (!confirm('発注数をすべてリセットしますか？')) return;
+  orderQty = {};
+  renderOrderTable();
+}
+
+function exportOrderExcel() {
+  const items = Object.entries(orderQty).map(([code, qty]) => {
+    const d = salesData[code];
+    if (!d) return null;
+    const jan = (d.jan || '').trim();
+    const productNo = jan.length >= 12 ? jan.slice(7, 12) : '';
+    return { code, jan, productNo, name: d.name, price: d.price, qty };
+  }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+  if (!items.length) { alert('発注数が入力されていません'); return; }
+
+  const rowCount = Math.ceil(items.length / 10) * 10;
+  const totalQty   = items.reduce((s, d) => s + d.qty, 0);
+  const totalPrice = items.reduce((s, d) => s + d.price * d.qty, 0);
+
+  // CSVデータを作成してhidden formでPythonスクリプトに渡す
+  // ここではブラウザ完結でSheetJS proなしでできる範囲でスタイル付きExcelを生成
+  // xlsxライブラリをCDNから読み込んで生成
+  if (typeof XLSX === 'undefined') {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => doExport(items, rowCount, totalQty, totalPrice);
+    document.head.appendChild(s);
+  } else {
+    doExport(items, rowCount, totalQty, totalPrice);
+  }
+}
+
+function doExport(items, rowCount, totalQty, totalPrice) {
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+
+  const wsData = [
+    ['No', '商品No', 'JAN', '商品名', '数量', '単価（税込）', '金額（税込）']
+  ];
+
+  for (let i = 0; i < rowCount; i++) {
+    const item = items[i];
+    if (item) {
+      wsData.push([i+1, item.productNo, item.jan, item.name, item.qty, item.price, item.price * item.qty]);
+    } else {
+      wsData.push([i+1, '', '', '', '', '', '']);
+    }
+  }
+  wsData.push(['', '', '', 'Total', totalQty, '', totalPrice]);
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [
+    {wch:5},
+    {wch:8},
+    {wch:15},
+    {wch:45},
+    {wch:7},
+    {wch:12},
+    {wch:14},
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '発注書');
+  XLSX.writeFile(wb, '発注書_' + today + '.xlsx');
+}
+
+function exportCSV() {
+  const thr  = parseInt(document.getElementById('threshold').value);
+  const basisModeEx = document.getElementById('basis-mode').value;
+  const rows = allData.map(d => {
+    const weekly30 = Math.round(d.total30 / 4.3);
+    const weeklyRate = basisModeEx === 'week'  ? Math.round(d.total7 * 0.67 + weekly30 * 0.33)
+                     : basisModeEx === 'month' ? Math.round(d.total7 * 0.33 + weekly30 * 0.67)
+                     : Math.round((d.total7 + weekly30) / 2);
+    const remaining = weeklyRate > 0 ? d.zaiko / weeklyRate : 999;
+    return { ...d, remaining };
+  }).filter(d => !d.isHidden && (d.total7 > 0 || d.total30 > 0) && d.remaining <= thr)
+    .sort((a, b) => a.remaining - b.remaining);
+  const bom  = '\uFEFF';
+  const head = 'SKUコード,商品名,在庫数,週計,うちセット週販,月計,うちセット月販,残週数\n';
+  const body = rows.map(d =>
+    `${d.code},"${d.name}",${d.zaiko},${d.total7},${d.extra7},${d.total30},${d.extra30},${Math.round(d.remaining)}`
+  ).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bom+head+body], {type:'text/csv'}));
+  a.download = '要発注リスト.csv'; a.click();
+}
+
+function exportJSON() {
+  if (!weeklyHistory.length) { alert('エクスポートするデータがありません'); return; }
+  const blob = new Blob([JSON.stringify(weeklyHistory, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'hacchujo_data.json';
+  a.click();
+}
+
+function importJSON(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('フォーマットエラー');
+      const merged = [...weeklyHistory];
+      for (const w of imported) {
+        const idx = merged.findIndex(m => m.date === w.date);
+        if (idx >= 0) merged[idx] = w;
+        else merged.push(w);
+      }
+      merged.sort((a, b) => a.date.localeCompare(b.date));
+      while (merged.length > MAX_WEEKS) merged.shift();
+      weeklyHistory = merged;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(weeklyHistory));
+      updateWeekChips();
+      renderTrendTable();
+      alert('インポートしました（' + weeklyHistory.length + '週分）');
+    } catch(e) {
+      alert('インポートに失敗しました。正しいJSONファイルか確認してください。');
+    }
+  };
+  reader.readAsText(file);
+  document.getElementById('json-import').value = '';
+}
+
+loadStorage();
+
+function startResize(e, thId) {
+  e.preventDefault();
+  const th = document.getElementById(thId);
+  const startX = e.clientX;
+  const startW = th.offsetWidth;
+  function onMove(e) {
+    const newW = Math.max(80, startW + e.clientX - startX);
+    th.style.width = newW + 'px';
+    th.style.minWidth = newW + 'px';
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+</script>
+</body>
+</html>
