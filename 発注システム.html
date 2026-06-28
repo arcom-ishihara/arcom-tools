@@ -275,25 +275,30 @@ function switchTab(name) {
 }
 
 function parseCSVText(text) {
-  const lines = text.trim().split('\n');
-  const parse = line => {
-    line = line.replace(/\r$/, '');
-    const result = []; let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') {
-        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-        else inQ = !inQ;
-      } else if (c === ',' && !inQ) {
-        result.push(cur); cur = '';
-      } else {
-        cur += c;
-      }
+  // クォート内の改行も正しく処理するCSVパーサー
+  const result = [];
+  let row = [], cur = '', inQ = false;
+  const t = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (c === '"') {
+      if (inQ && t[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) {
+      row.push(cur.trim()); cur = '';
+    } else if (c === '\n' && !inQ) {
+      row.push(cur.trim());
+      if (row.some(v => v !== '')) result.push(row);
+      row = []; cur = '';
+    } else if (c === '\n' && inQ) {
+      // クォート内の改行はスペースに変換
+      cur += ' ';
+    } else {
+      cur += c;
     }
-    result.push(cur);
-    return result;
-  };
-  return lines.map(parse);
+  }
+  if (cur || row.length) { row.push(cur.trim()); if (row.some(v => v !== '')) result.push(row); }
+  return result;
 }
 
 function decodeCSV(file, cb) {
@@ -342,11 +347,11 @@ function loadSales(file) {
       if (r.length < 10) continue;
       if (!dateStr && r[0]) dateStr = r[0].trim();
       salesData[r[1]] = {
-        name:  r[nameCol]  || '',
+        name:  (r[nameCol]  || '').replace(/[\r\n]/g, '').trim(),
         zaiko: n(r[zaikoCol]),
-        jan:   (r[janCol]  || '').trim(),
-        price: f(r[priceCol]),
-        rate:  f(r[rateCol]),
+        jan:   (r[janCol]  || '').replace(/[\r\n]/g, '').trim(),
+        price: f((r[priceCol] || '').replace(/[\r\n]/g, '')),
+        rate:  f((r[rateCol]  || '').replace(/[\r\n]/g, '')),
         uri7:  uri7Cols.reduce((s,j)  => s + n(r[j]), 0),
         uri30: uri30Cols.reduce((s,j) => s + n(r[j]), 0),
       };

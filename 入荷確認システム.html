@@ -3,866 +3,425 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>発注判断補助ツール</title>
+<title>入荷照合ツール</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 14px; color: #1a1a1a; background: #f5f5f0; padding: 24px; }
-h1 { font-size: 18px; font-weight: 500; margin-bottom: 20px; }
-.tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 0.5px solid #ddd; }
-.tab { padding: 10px 24px; font-size: 13px; cursor: pointer; color: #888; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-.tab.active { color: #1a1a1a; border-bottom: 2px solid #1a1a1a; font-weight: 500; }
-.tab-content { display: none; }
-.tab-content.active { display: block; }
-.stats { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; margin-bottom: 20px; }
+h1 { font-size: 18px; font-weight: 500; margin-bottom: 6px; }
+.subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+.card { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.card-title { font-size: 12px; font-weight: 500; color: #888; margin-bottom: 12px; }
+.card-title span { background: #1a1a1a; color: #fff; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-right: 6px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.file-label { font-size: 13px; padding: 6px 12px; border: 0.5px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
+.file-label:hover { background: #f5f5f5; }
+input[type=file] { display: none; }
+input[type=number] { font-size: 13px; border: 0.5px solid #ccc; border-radius: 6px; padding: 5px 8px; width: 60px; }
+select { font-size: 13px; border: 0.5px solid #ccc; border-radius: 6px; padding: 5px 8px; background: #fff; min-width: 120px; }
+.col-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; }
+.col-item label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; }
+.preview-box { background: #f9f9f9; border: 0.5px solid #eee; border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #555; margin-top: 10px; font-family: monospace; white-space: pre; overflow-x: auto; max-height: 70px; }
+.ok { color: #27ae60; font-size: 12px; }
+button { font-size: 13px; padding: 8px 16px; border: 0.5px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
+button:hover { background: #f5f5f5; }
+button.primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+button.primary:hover { background: #333; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+.btns { display: flex; gap: 8px; margin-bottom: 16px; }
+.status { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; }
+.status.error { color: #c0392b; }
+.status.success { color: #27ae60; }
+.summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
 .stat { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; }
 .stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
-.stat-value { font-size: 22px; font-weight: 500; }
-.stat-value.danger { color: #c0392b; }
-.file-area { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #555; }
-.file-area label { font-weight: 500; color: #333; }
-.ok { color: #27ae60; margin-left: 8px; }
-.controls { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
-.controls label { font-size: 13px; color: #666; }
-input[type=range] { width: 100px; }
-select, input[type=text] { font-size: 13px; border: 0.5px solid #ccc; border-radius: 6px; padding: 5px 8px; background: #fff; color: #1a1a1a; }
-input[type=text] { width: 200px; }
-.threshold-out { font-size: 13px; font-weight: 500; min-width: 32px; }
-.table-wrap { overflow-x: auto; background: #fff; border: 0.5px solid #ddd; border-radius: 10px; }
-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
-#th-name { width: 200px; min-width: 80px; max-width: 600px; }
-thead tr:first-child th { border-bottom: 0.5px solid #eee; }
-thead tr:last-child th { border-bottom: 0.5px solid #e0e0e0; }
-th { padding: 7px 6px; font-weight: 500; color: #888; text-align: right; white-space: nowrap; user-select: none; }
-th.sortable { cursor: pointer; }
-th.sortable:hover { color: #333; }
-th.group-header { text-align: center; font-size: 11px; color: #aaa; border-left: 0.5px solid #eee; border-right: 0.5px solid #eee; }
-th.sub { font-size: 11px; color: #aaa; }
-th:nth-child(1) { width: 110px; text-align: left; }
-th:nth-child(2) { text-align: left; }
-th:nth-child(3) { width: 52px; }
-th:nth-child(4) { width: 52px; border-left: 0.5px solid #eee; }
-th:nth-child(5) { width: 58px; border-right: 0.5px solid #eee; }
-th:nth-child(6) { width: 52px; border-left: 0.5px solid #eee; }
-th:nth-child(7) { width: 58px; border-right: 0.5px solid #eee; }
-th:nth-child(8) { width: 52px; }
-th:nth-child(9) { width: 72px; text-align: center; }
-td { padding: 7px 6px; border-bottom: 0.5px solid #f0f0f0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-td:nth-child(1) { text-align: left; font-family: monospace; font-size: 11px; color: #888; }
-td:nth-child(2) { text-align: left; }
-td:nth-child(4) { border-left: 0.5px solid #eee; font-weight: 500; }
-td:nth-child(5) { color: #888; border-right: 0.5px solid #eee; font-size: 11px; }
-td:nth-child(6) { border-left: 0.5px solid #eee; font-weight: 500; }
-td:nth-child(7) { color: #888; border-right: 0.5px solid #eee; font-size: 11px; }
-td:nth-child(8) { color: #888; border-left: 0.5px solid #eee; font-size: 11px; }
-td:nth-child(9) { color: #888; border-right: 0.5px solid #eee; font-size: 11px; }
-td:nth-child(12) { text-align: center; }
+.stat-value { font-size: 20px; font-weight: 500; }
+.danger { color: #c0392b; }
+.good { color: #27ae60; }
+.tbl-wrap { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+.tbl-head { padding: 12px 16px; font-size: 13px; font-weight: 500; border-bottom: 0.5px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { padding: 8px 10px; font-weight: 500; color: #888; text-align: right; border-bottom: 0.5px solid #eee; white-space: nowrap; }
+th.left { text-align: left; }
+td { padding: 8px 10px; border-bottom: 0.5px solid #f5f5f5; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+td.left { text-align: left; max-width: 240px; }
 tr:last-child td { border-bottom: none; }
-tr:hover td { background: #fafafa; }
-.badge { font-size: 11px; padding: 2px 6px; border-radius: 5px; white-space: nowrap; }
-.badge-danger { background: #fdecea; color: #c0392b; }
-.badge-warning { background: #fef9e7; color: #d68910; }
-.badge-success { background: #eafaf1; color: #1e8449; }
-.badge-muted { background: #f5f5f5; color: #999; }
-.badge-up { background: #eafaf1; color: #1e8449; }
-.badge-down { background: #fdecea; color: #c0392b; }
-.rem-danger { color: #c0392b; font-weight: 500; }
-.rem-warning { color: #d68910; font-weight: 500; }
-.set-tag { font-size: 10px; color: #aaa; margin-left: 3px; }
-.btns { margin-top: 14px; display: flex; gap: 8px; }
-button { font-size: 13px; padding: 7px 14px; border: 0.5px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; color: #333; }
-button:hover { background: #f5f5f5; }
-.empty { padding: 40px; text-align: center; color: #aaa; }
-input[type=file] { font-size: 12px; }
-.sort-arrow { font-size: 9px; margin-left: 2px; color: #ccc; }
-.resizable { position: relative; }
-.resizable .resize-handle {
-  position: absolute; right: 0; top: 0; bottom: 0;
-  width: 5px; cursor: col-resize; user-select: none;
-  background: transparent;
-}
-.resizable .resize-handle:hover { background: rgba(0,0,0,0.1); }
-.sort-arrow.active { color: #333; }
-.col-filter-btn { font-size: 10px; background: none; border: none; cursor: pointer; padding: 0 2px; color: #bbb; vertical-align: middle; }
-.col-filter-btn.active { color: #2980b9; }
-.filter-popup { display: none; position: fixed; background: #fff; border: 0.5px solid #ccc; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 1000; padding: 10px; min-width: 220px; max-height: 320px; flex-direction: column; gap: 6px; }
-.filter-popup.open { display: flex; }
-.filter-popup input[type=text] { width: 100%; font-size: 12px; }
-.filter-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 2px; max-height: 220px; }
-.filter-list label { font-size: 12px; display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
-.filter-list label:hover { background: #f5f5f5; }
-.filter-popup-btns { display: flex; gap: 6px; }
-.filter-popup-btns button { flex: 1; font-size: 12px; padding: 5px 8px; }
-.week-info { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; font-size: 13px; }
-.week-info-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.week-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.week-chip { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: #f0f0f0; color: #555; }
-.week-chip.latest { background: #1a1a1a; color: #fff; }
-.trend-cell { text-align: right; }
-.trend-up { color: #1e8449; font-weight: 500; }
-.trend-down { color: #c0392b; font-weight: 500; }
-.trend-flat { color: #888; }
-.storage-bar { font-size: 12px; color: #888; margin-top: 8px; }
-input.order-qty { width: 52px; font-size: 12px; text-align: right; border: 0.5px solid #ccc; border-radius: 4px; padding: 2px 4px; }
-input.order-qty:focus { outline: none; border-color: #2980b9; }
-input.order-qty.has-value { background: #eafaf1; border-color: #1e8449; }
+tr.diff td { background: #fffaf9; }
+tr.match-pair td { background: #f0faf5; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: #f5f5f5; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 5px; }
+.badge-ok { background: #eafaf1; color: #1e8449; }
+.badge-ng { background: #fdecea; color: #c0392b; }
+.badge-warn { background: #fef9e7; color: #d68910; }
+.pos { color: #c0392b; font-weight: 500; }
+.neg { color: #2980b9; font-weight: 500; }
+.match-label { font-size: 10px; background: #d5f5e3; color: #1e8449; padding: 1px 6px; border-radius: 3px; margin-left: 4px; }
+.hidden { display: none; }
 </style>
 </head>
 <body>
-<h1>発注判断補助ツール</h1>
+<h1>入荷照合ツール</h1>
+<p class="subtitle">スキャンデータと請求書を突き合わせ、商品Noの新旧対応も金額・個数から自動推定します</p>
 
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('order')">発注判断</div>
-  <div class="tab" onclick="switchTab('trend')">週次推移</div>
-</div>
-
-<!-- 発注判断タブ -->
-<div id="tab-order" class="tab-content active">
-<div class="stats">
-  <div class="stat"><div class="stat-label">総SKU数</div><div class="stat-value" id="stat-total">—</div></div>
-  <div class="stat"><div class="stat-label">販売中SKU</div><div class="stat-value" id="stat-active">—</div></div>
-  <div class="stat"><div class="stat-label">要発注（閾値以内）</div><div class="stat-value danger" id="stat-urgent">—</div></div>
-  <div class="stat"><div class="stat-label">在庫切れ</div><div class="stat-value danger" id="stat-zero">—</div></div>
-  <div class="stat"><div class="stat-label">🔴 早急に要改善</div><div class="stat-value danger" id="stat-critical">—</div></div>
-  <div class="stat"><div class="stat-label">🟡 要改善</div><div class="stat-value" id="stat-warning">—</div></div>
-  <div class="stat"><div class="stat-label">🟢 余裕あれば要改善</div><div class="stat-value" id="stat-mild">—</div></div>
-</div>
-
-<div class="file-area">
-  <div>
-    <label>販売データCSV</label>
-    <input type="file" id="sales-file" accept=".csv" onchange="loadSales(this.files[0])">
-    <span class="ok" id="sales-status"></span>
+<div class="card">
+  <div class="card-title"><span>1</span>スキャンデータ（Excel）</div>
+  <div class="row">
+    <label class="file-label">ファイルを選択<input type="file" id="f-scan" accept=".xlsx,.xls" onchange="onFile('scan',this)"></label>
+    <span class="ok" id="ok-scan"></span>
   </div>
-  <div>
-    <label>セット連携CSV</label>
-    <input type="file" id="set-file" accept=".csv" onchange="loadSet(this.files[0])">
-    <span class="ok" id="set-status"></span>
-  </div>
-  <div style="border-left:0.5px solid #eee;padding-left:16px;display:flex;align-items:center;gap:8px;">
-    <label style="font-size:12px;color:#888;">蓄積データ</label>
-    <label style="font-size:12px;padding:4px 10px;border:0.5px solid #ccc;border-radius:6px;background:#fff;cursor:pointer;">
-      JSONインポート
-      <input type="file" id="json-import" accept=".json" onchange="importJSON(this.files[0])" style="display:none;">
-    </label>
-    <button onclick="exportJSON()" style="font-size:12px;padding:4px 10px;">JSONエクスポート</button>
-    <span class="ok" id="json-status"></span>
+  <div id="cfg-scan" class="hidden">
+    <div class="row">
+      <label style="font-size:13px;color:#555;">ヘッダー行</label>
+      <input type="number" id="hr-scan" value="3" min="1" max="30">
+      <label style="font-size:13px;color:#555;margin-left:8px;">データ開始行</label>
+      <input type="number" id="dr-scan" value="4" min="1" max="30">
+      <button onclick="applyConfig('scan')" style="font-size:12px;padding:5px 12px;">適用</button>
+    </div>
+    <div class="col-grid">
+      <div class="col-item"><label>商品No列</label><select id="c-scan-pno"></select></div>
+      <div class="col-item"><label>商品名列</label><select id="c-scan-name"></select></div>
+      <div class="col-item"><label>数量列</label><select id="c-scan-qty"></select></div>
+      <div class="col-item"><label>単価列</label><select id="c-scan-price"></select></div>
+      <div class="col-item"><label>金額列</label><select id="c-scan-amt"></select></div>
+    </div>
+    <div class="preview-box" id="pv-scan"></div>
   </div>
 </div>
 
-<div class="controls">
-  <label>発注閾値</label>
-  <input type="range" min="1" max="8" value="2" id="threshold" step="1" oninput="document.getElementById('threshold-out').textContent=this.value+'週'; renderOrderTable()">
-  <span class="threshold-out" id="threshold-out">2週</span>
-  <label style="margin-left:8px;">残週数の計算</label>
-  <select id="basis-mode" onchange="renderOrderTable()">
-    <option value="avg">単純平均（通常時）</option>
-    <option value="week">7日重視（季節の変わり目）</option>
-    <option value="month">30日重視（セール直後）</option>
-    <option value="avg13">3ヶ月平均（JSONデータ必要）</option>
-    <option value="avg26">半年平均（JSONデータ必要）</option>
-  </select>
-  <label style="margin-left:8px;">表示</label>
-  <select id="filter" onchange="renderOrderTable()">
-    <option value="urgent">要発注のみ</option>
-    <option value="active">販売中全件</option>
-    <option value="all">全SKU</option>
-    <option value="critical">🔴 マジで早急に要改善</option>
-    <option value="warning">🟡 要改善</option>
-    <option value="mild">🟢 余裕あれば要改善</option>
-  </select>
-  <input type="text" id="search" placeholder="商品名 / SKUコードで絞り込み" oninput="renderOrderTable()">
+<div class="card">
+  <div class="card-title"><span>2</span>請求書（Excel）</div>
+  <div class="row">
+    <label class="file-label">ファイルを選択<input type="file" id="f-invoice" accept=".xlsx,.xls" onchange="onFile('invoice',this)"></label>
+    <span class="ok" id="ok-invoice"></span>
+  </div>
+  <div id="cfg-invoice" class="hidden">
+    <div class="row">
+      <label style="font-size:13px;color:#555;">ヘッダー行</label>
+      <input type="number" id="hr-invoice" value="2" min="1" max="30">
+      <label style="font-size:13px;color:#555;margin-left:8px;">データ開始行</label>
+      <input type="number" id="dr-invoice" value="3" min="1" max="30">
+      <button onclick="applyConfig('invoice')" style="font-size:12px;padding:5px 12px;">適用</button>
+    </div>
+    <div class="col-grid">
+      <div class="col-item"><label>商品No列</label><select id="c-invoice-pno"></select></div>
+      <div class="col-item"><label>商品名列</label><select id="c-invoice-name"></select></div>
+      <div class="col-item"><label>数量列</label><select id="c-invoice-qty"></select></div>
+      <div class="col-item"><label>単価列</label><select id="c-invoice-price"></select></div>
+      <div class="col-item"><label>金額列</label><select id="c-invoice-amt"></select></div>
+    </div>
+    <div class="preview-box" id="pv-invoice"></div>
+  </div>
 </div>
 
-<div class="table-wrap">
-<table>
-  <thead>
-    <tr>
-      <th rowspan="2" class="sortable" onclick="sortBy('code')" style="width:90px;min-width:90px;max-width:90px;">SKUコード <span class="sort-arrow" id="arr-code">▲▼</span></th>
-      <th rowspan="2" style="text-align:left;" class="resizable" id="th-name">商品名 <button class="col-filter-btn" id="name-filter-btn" onclick="toggleNameFilter(event)">▼</button><div class="resize-handle" onmousedown="startResize(event,'th-name')"></div></th>
-      <th rowspan="2" style="width:52px;min-width:52px;max-width:52px;">発注数</th>
-      <th rowspan="2" class="sortable" onclick="sortBy('zaiko')" style="width:46px;min-width:46px;max-width:46px;">在庫 <span class="sort-arrow" id="arr-zaiko">▲▼</span></th>
-      <th colspan="2" class="group-header">週</th>
-      <th colspan="2" class="group-header">月</th>
-      <th class="group-header" style="border-left:0.5px solid #eee;border-right:0.5px solid #eee;">3ヶ月</th>
-      <th class="group-header" style="border-right:0.5px solid #eee;">半年</th>
-      <th rowspan="2" class="sortable" onclick="sortBy('remaining')" style="width:52px;min-width:52px;max-width:52px;">残週数 <span class="sort-arrow" id="arr-remaining">▲</span></th>
-      <th rowspan="2" class="sortable" onclick="sortBy('status')" style="width:68px;min-width:68px;max-width:68px;text-align:center;">状態 <span class="sort-arrow" id="arr-status">▲▼</span></th>
-    </tr>
-    <tr>
-      <th class="sortable sub" onclick="sortBy('total7')" style="width:46px;min-width:46px;max-width:46px;border-left:0.5px solid #eee;">週計 <span class="sort-arrow" id="arr-total7">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('extra7')" style="width:46px;min-width:46px;max-width:46px;border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra7">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('total30')" style="width:46px;min-width:46px;max-width:46px;border-left:0.5px solid #eee;">月計 <span class="sort-arrow" id="arr-total30">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('extra30')" style="width:46px;min-width:46px;max-width:46px;border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra30">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('avg13')" style="width:46px;min-width:46px;max-width:46px;border-left:0.5px solid #eee;">週平均 <span class="sort-arrow" id="arr-avg13">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('avg26')" style="width:46px;min-width:46px;max-width:46px;border-right:0.5px solid #eee;">週平均 <span class="sort-arrow" id="arr-avg26">▲▼</span></th>
-    </tr>
-  </thead>
-  <tbody id="order-table-body">
-    <tr><td colspan="12" class="empty">販売データCSVを読み込んでください</td></tr>
-  </tbody>
-</table>
-</div>
 <div class="btns">
-  <button onclick="exportCSV()" id="export-btn" style="display:none;">要発注リストをCSV出力</button>
-  <button onclick="exportOrderExcel()" id="order-excel-btn" style="display:none;">発注書をExcel出力</button>
-  <button onclick="clearOrderQty()" id="clear-order-btn" style="display:none;">発注数をリセット</button>
-</div>
+  <button class="primary" id="btn-analyze" onclick="analyze()" disabled>照合を実行</button>
+  <button onclick="resetAll()">リセット</button>
 </div>
 
-<!-- 週次推移タブ -->
-<div id="tab-trend" class="tab-content">
-<div class="week-info">
-  <div class="week-info-row">
-    <span style="font-size:13px;font-weight:500;">蓄積データ</span>
-    <div class="week-chips" id="week-chips"><span style="color:#aaa;font-size:12px;">データなし</span></div>
-    <button onclick="clearStorage()" style="font-size:12px;padding:4px 10px;margin-left:auto;">データをリセット</button>
+<div class="status" id="status">スキャンデータと請求書を読み込んでください</div>
+
+<div class="summary hidden" id="summary">
+  <div class="stat"><div class="stat-label">スキャン合計個数</div><div class="stat-value" id="v-s-qty">—</div></div>
+  <div class="stat"><div class="stat-label">請求書合計個数</div><div class="stat-value" id="v-i-qty">—</div></div>
+  <div class="stat"><div class="stat-label">個数差異</div><div class="stat-value" id="v-q-diff">—</div></div>
+  <div class="stat"><div class="stat-label">金額差異</div><div class="stat-value" id="v-a-diff">—</div></div>
+</div>
+
+<!-- ブランド別 -->
+<div class="tbl-wrap hidden" id="brand-wrap">
+  <div class="tbl-head"><span>ブランド別照合</span><span style="font-size:12px;color:#888;">差異ありをクリックで詳細</span></div>
+  <table><thead><tr>
+    <th class="left">ブランド</th>
+    <th>スキャン個数</th><th>請求個数</th><th>個数差</th>
+    <th>スキャン金額</th><th>請求金額</th><th>金額差</th>
+    <th>判定</th>
+  </tr></thead><tbody id="brand-body"></tbody></table>
+</div>
+
+<!-- 商品別詳細 -->
+<div class="tbl-wrap hidden" id="detail-wrap">
+  <div class="tbl-head">
+    <span id="detail-title">商品別詳細</span>
+    <button onclick="document.getElementById('detail-wrap').classList.add('hidden')" style="font-size:12px;padding:4px 10px;">閉じる</button>
   </div>
-  <div class="storage-bar" id="storage-bar"></div>
-</div>
-
-<div class="controls">
-  <label>表示週数</label>
-  <select id="trend-weeks" onchange="renderTrendTable()">
-    <option value="4">直近4週</option>
-    <option value="8">直近8週</option>
-    <option value="12">直近12週</option>
-  </select>
-  <label style="margin-left:8px;">フラグ</label>
-  <select id="trend-filter" onchange="renderTrendTable()">
-    <option value="all">全件</option>
-    <option value="up">急増のみ</option>
-    <option value="down">急減のみ</option>
-    <option value="flagged">急増・急減</option>
-  </select>
-  <input type="text" id="trend-search" placeholder="商品名 / SKUコードで絞り込み" oninput="renderTrendTable()" style="width:200px;">
-</div>
-
-<div class="table-wrap">
-  <table id="trend-table">
-    <thead id="trend-thead"></thead>
-    <tbody id="trend-tbody">
-      <tr><td colspan="5" class="empty">販売データを読み込むと週次推移が表示されます</td></tr>
-    </tbody>
-  </table>
-</div>
-</div>
-
-<div class="filter-popup" id="name-filter-popup">
-  <input type="text" id="name-filter-search" placeholder="商品名を検索..." oninput="renderNameFilterList()">
-  <div class="filter-list" id="name-filter-list"></div>
-  <div class="filter-popup-btns">
-    <button onclick="selectAllNames()">全選択</button>
-    <button onclick="clearAllNames()">全解除</button>
-    <button onclick="applyNameFilter()">適用</button>
+  <div style="font-size:12px;color:#888;padding:8px 16px;border-bottom:0.5px solid #eee;">
+    🟢 緑行 = 個数・単価一致のため商品No新旧対応と推定 　🟥 赤行 = 実際の差異の可能性あり
   </div>
+  <table><thead><tr>
+    <th class="left">商品No</th><th class="left">商品名</th>
+    <th>スキャン数</th><th>請求数</th><th>個数差</th>
+    <th>スキャン単価</th><th>請求単価</th>
+    <th>スキャン金額</th><th>請求金額</th><th>金額差</th>
+  </tr></thead><tbody id="detail-body"></tbody></table>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const STORAGE_KEY = 'hacchujo_weekly';
-const MAX_WEEKS = 12;
+const raw = {};
 
-let salesData = {}, setMap = {}, allData = [], parentCodes = new Set();
-let orderQty = {};
-let sortKey = 'remaining', sortAsc = true;
-let selectedNames = new Set(), nameFilterActive = false;
-let weeklyHistory = [];
-
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['order','trend'][i] === name));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'trend') renderTrendTable();
+function onFile(type, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    raw[type] = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+    document.getElementById('ok-' + type).textContent = '✓ ' + file.name;
+    document.getElementById('cfg-' + type).classList.remove('hidden');
+    applyConfig(type);
+    checkReady();
+  };
+  reader.readAsArrayBuffer(file);
 }
 
-function parseCSVText(text) {
-  // クォート内の改行も正しく処理するCSVパーサー
-  const result = [];
-  let row = [], cur = '', inQ = false;
-  const t = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  for (let i = 0; i < t.length; i++) {
-    const c = t[i];
-    if (c === '"') {
-      if (inQ && t[i+1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (c === ',' && !inQ) {
-      row.push(cur.trim()); cur = '';
-    } else if (c === '\n' && !inQ) {
-      row.push(cur.trim());
-      if (row.some(v => v !== '')) result.push(row);
-      row = []; cur = '';
-    } else if (c === '\n' && inQ) {
-      // クォート内の改行はスペースに変換
-      cur += ' ';
-    } else {
-      cur += c;
-    }
+function colLetter(i) {
+  let s = ''; i++;
+  while (i > 0) { s = String.fromCharCode(64 + (i % 26 || 26)) + s; i = Math.floor((i-1)/26); }
+  return s;
+}
+
+function applyConfig(type) {
+  const rows = raw[type];
+  if (!rows) return;
+  const hr = parseInt(document.getElementById('hr-' + type).value) - 1;
+  const header = (rows[hr] || []);
+  const opts = '<option value="-1">（なし）</option>' +
+    header.map((h,i) => '<option value="' + i + '">' + colLetter(i) + ': ' + String(h).slice(0,12) + '</option>').join('');
+  ['pno','name','qty','price','amt'].forEach(col => {
+    const sel = document.getElementById('c-' + type + '-' + col);
+    const cur = sel.value;
+    sel.innerHTML = opts;
+    if (cur !== '-1') sel.value = cur;
+  });
+  autoDetect(type, header);
+  showPreview(type);
+}
+
+function autoDetect(type, header) {
+  const hl = header.map(h => String(h).toLowerCase().replace(/\s/g,''));
+  const find = (...kws) => { for (const kw of kws) { const i = hl.findIndex(h => h.includes(kw)); if (i>=0) return i; } return -1; };
+  const pno   = find('商品no','商品番号','品番');
+  const name  = find('商品名','品名');
+  const qty   = find('入荷\n個数','入荷個数','数量','数\n','：数');
+  const price = find('単価','定価');
+  const amt   = find('入荷小計','金額','合計');
+  if (pno   >= 0) document.getElementById('c-' + type + '-pno').value   = pno;
+  if (name  >= 0) document.getElementById('c-' + type + '-name').value  = name;
+  if (qty   >= 0) document.getElementById('c-' + type + '-qty').value   = qty;
+  if (price >= 0) document.getElementById('c-' + type + '-price').value = price;
+  if (amt   >= 0) document.getElementById('c-' + type + '-amt').value   = amt;
+}
+
+function showPreview(type) {
+  const rows = raw[type];
+  const dr    = parseInt(document.getElementById('dr-' + type).value) - 1;
+  const pnoC  = parseInt(document.getElementById('c-' + type + '-pno').value);
+  const nmC   = parseInt(document.getElementById('c-' + type + '-name').value);
+  const qtC   = parseInt(document.getElementById('c-' + type + '-qty').value);
+  const prC   = parseInt(document.getElementById('c-' + type + '-price').value);
+  const amC   = parseInt(document.getElementById('c-' + type + '-amt').value);
+  const lines = [];
+  for (let i = dr; i < Math.min(dr+3, rows.length); i++) {
+    const r = rows[i];
+    const p = pnoC>=0?r[pnoC]:''; const n = nmC>=0?r[nmC]:'';
+    const q = qtC>=0?r[qtC]:'';  const pr = prC>=0?r[prC]:''; const a = amC>=0?r[amC]:'';
+    if (!p && !n) continue;
+    lines.push('No:'+String(p).slice(0,8)+'  名:'+String(n).slice(0,16)+'  数:'+q+'  単価:'+pr+'  金額:'+a);
   }
-  if (cur || row.length) { row.push(cur.trim()); if (row.some(v => v !== '')) result.push(row); }
+  document.getElementById('pv-' + type).textContent = lines.join('\n') || '（データなし）';
+}
+
+function checkReady() {
+  document.getElementById('btn-analyze').disabled = !(raw.scan && raw.invoice);
+}
+
+function detectBrand(name) {
+  const n = String(name).toUpperCase();
+  const map = [
+    ['ALBION','アルビオン'],['CPB','クレドポーボーテ','クレドポ'],
+    ['COSME DECORTE','コスメデコルテ','DECORTE'],['IGNIS','イグニス'],
+    ['ELEGANCE','エレガンス'],['POLA','ポーラ'],['PREDIA','プレディア'],
+    ['KANEBO','カネボウ'],['TWANY','トワニー'],['BENEFIQUE','ベネフィーク'],
+    ['INUI','インウイ'],['SHISEIDO','資生堂'],
+  ];
+  for (const [brand, ...kws] of map) {
+    if (n.includes(brand) || kws.some(k => n.includes(k.toUpperCase()))) return brand;
+  }
+  return 'その他';
+}
+
+function parseData(type) {
+  const rows  = raw[type];
+  const dr    = parseInt(document.getElementById('dr-' + type).value) - 1;
+  const pnoC  = parseInt(document.getElementById('c-' + type + '-pno').value);
+  const nmC   = parseInt(document.getElementById('c-' + type + '-name').value);
+  const qtC   = parseInt(document.getElementById('c-' + type + '-qty').value);
+  const prC   = parseInt(document.getElementById('c-' + type + '-price').value);
+  const amC   = parseInt(document.getElementById('c-' + type + '-amt').value);
+  const result = {};
+  for (let i = dr; i < rows.length; i++) {
+    const r    = rows[i];
+    const pno  = String(r[pnoC]  || '').trim();
+    const name = String(r[nmC]   || '').trim();
+    const qty  = parseFloat(r[qtC])  || 0;
+    const price= parseFloat(r[prC])  || 0;
+    const amt  = parseFloat(r[amC])  || 0;
+    if (!pno || !name || qty <= 0) continue;
+    const brand = detectBrand(name);
+    if (!result[brand]) result[brand] = {};
+    if (!result[brand][pno]) result[brand][pno] = {name, qty:0, price, amt:0};
+    result[brand][pno].qty += qty;
+    result[brand][pno].amt += amt;
+    if (price > 0) result[brand][pno].price = price;
+  }
   return result;
 }
 
-function decodeCSV(file, cb) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    const buf = e.target.result;
-    const bytes = new Uint8Array(buf);
-    let decoded;
-    if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
-      decoded = new TextDecoder('utf-8').decode(buf).slice(1);
-    } else {
-      decoded = new TextDecoder('shift-jis').decode(buf);
-    }
-    cb(parseCSVText(decoded));
-  };
-  // readAsArrayBufferの代わりにreadAsTextも試みる
+let scanResult = {}, invResult = {};
+
+function analyze() {
   try {
-    reader.readAsArrayBuffer(file);
+    scanResult = parseData('scan');
+    invResult  = parseData('invoice');
+    const sCnt = Object.values(scanResult).reduce((s,b)=>s+Object.values(b).reduce((x,v)=>x+v.qty,0),0);
+    const iCnt = Object.values(invResult).reduce((s,b)=>s+Object.values(b).reduce((x,v)=>x+v.qty,0),0);
+    if (sCnt === 0) throw new Error('スキャンデータを読み取れませんでした。設定を確認してください。');
+    if (iCnt === 0) throw new Error('請求書を読み取れませんでした。設定を確認してください。');
+    renderResults();
+    setStatus('照合完了', 'success');
   } catch(e) {
-    // フォールバック
-    const r2 = new FileReader();
-    r2.onload = ev => cb(parseCSVText(ev.target.result));
-    r2.readAsText(file, 'shift-jis');
+    setStatus('エラー: ' + e.message, 'error');
   }
 }
 
-function loadSales(file) {
-  if (!file) return;
-  decodeCSV(file, rows => {
-    salesData = {};
-    const n = s => parseInt(s) || 0;
-    const f = s => parseFloat(s) || 0;
-    let dateStr = '';
-    // 列インデックスをヘッダーから動的に取得
-    const header = rows[0];
-    const nameCol  = header.findIndex(h => h === '商品名');
-    const zaikoCol = header.findIndex(h => h === '現在在庫数');
-    const janCol   = header.findIndex(h => h === 'メモ');
-    const priceCol = header.findIndex(h => h === 'メモ2');
-    const rateCol  = header.findIndex(h => h === 'メモ3');
-    // 過去7日・30日の販売数列を動的に取得
-    const uri7Cols  = header.map((h,i) => h.includes('過去7日間販売数')  ? i : -1).filter(i => i >= 0);
-    const uri30Cols = header.map((h,i) => h.includes('過去30日間販売数') ? i : -1).filter(i => i >= 0);
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i];
-      if (r.length < 10) continue;
-      if (!dateStr && r[0]) dateStr = r[0].trim();
-      salesData[r[1]] = {
-        name:  (r[nameCol]  || '').replace(/[\r\n]/g, '').trim(),
-        zaiko: n(r[zaikoCol]),
-        jan:   (r[janCol]  || '').replace(/[\r\n]/g, '').trim(),
-        price: f((r[priceCol] || '').replace(/[\r\n]/g, '')),
-        rate:  f((r[rateCol]  || '').replace(/[\r\n]/g, '')),
-        uri7:  uri7Cols.reduce((s,j)  => s + n(r[j]), 0),
-        uri30: uri30Cols.reduce((s,j) => s + n(r[j]), 0),
-      };
-    }
-    document.getElementById('sales-status').textContent = '✓ ' + Object.keys(salesData).length + '件';
-    selectedNames = new Set(); nameFilterActive = false;
-    document.getElementById('name-filter-btn').classList.remove('active');
-    saveWeeklySnapshot(dateStr);
-    compute();
-  });
-}
-
-function saveWeeklySnapshot(dateStr) {
-  try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    const weekKey = dateStr || new Date().toISOString().slice(0,10);
-    const existing = stored.findIndex(w => w.date === weekKey);
-    const snapshot = { date: weekKey, data: {} };
-    for (const [code, d] of Object.entries(salesData)) {
-      snapshot.data[code] = { name: d.name, total7: d.uri7 };
-    }
-    if (existing >= 0) stored[existing] = snapshot;
-    else stored.push(snapshot);
-    stored.sort((a,b) => a.date.localeCompare(b.date));
-    while (stored.length > MAX_WEEKS) stored.shift();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-    weeklyHistory = stored;
-    updateWeekChips();
-  } catch(e) { console.error(e); }
-}
-
-function loadStorage() {
-  try {
-    weeklyHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    updateWeekChips();
-  } catch(e) { weeklyHistory = []; }
-}
-
-function updateWeekChips() {
-  const el = document.getElementById('week-chips');
-  if (!weeklyHistory.length) { el.innerHTML = '<span style="color:#aaa;font-size:12px;">データなし</span>'; return; }
-  el.innerHTML = weeklyHistory.map((w,i) =>
-    `<span class="week-chip ${i === weeklyHistory.length-1 ? 'latest' : ''}">${w.date}</span>`
-  ).join('');
-  document.getElementById('storage-bar').textContent = `${weeklyHistory.length}週分保存済 / 最大12週`;
-  const jsStatus = document.getElementById('json-status');
-  if (jsStatus) jsStatus.textContent = weeklyHistory.length > 0 ? '✓ ' + weeklyHistory.length + '週分読込済' : '';
-}
-
-function clearStorage() {
-  if (!confirm('蓄積データをすべて削除しますか？')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  weeklyHistory = [];
-  updateWeekChips();
-  renderTrendTable();
-}
-
-function loadSet(file) {
-  if (!file) return;
-  decodeCSV(file, rows => {
-    setMap = {}; parentCodes = new Set();
-    if (!rows.length) return;
-    const header = rows[0];
-    const childCodeCols = [];
-    const childQtyCols  = [];
-    header.forEach((h, i) => {
-      const hStr = h.replace(/\s/g, '');
-      if (/^子商品\d+マスターコード$/.test(hStr)) childCodeCols.push(i);
-      if (/^子商品\d+構成数$/.test(hStr))         childQtyCols.push(i);
-    });
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i];
-      const parent = r[0];
-      if (!parent) continue;
-      parentCodes.add(parent);
-      for (let j = 0; j < childCodeCols.length; j++) {
-        const child = (r[childCodeCols[j]] || '').trim();
-        const qty   = parseInt(r[childQtyCols[j]]) || 0;
-        if (child && qty) {
-          if (!setMap[child]) setMap[child] = [];
-          setMap[child].push({ parent, qty });
-        }
-      }
-    }
-    document.getElementById('set-status').textContent = '✓ ' + (rows.length-1) + '件';
-    compute();
-  });
-}
-
-function compute() {
-  if (!Object.keys(salesData).length) return;
-  allData = [];
-  const hideCodes = new Set([...parentCodes]);
-  for (const [code, d] of Object.entries(salesData)) {
-    let extra7 = 0, extra30 = 0;
-    for (const { parent, qty } of (setMap[code] || [])) {
-      if (salesData[parent]) {
-        extra7  += salesData[parent].uri7  * qty;
-        extra30 += salesData[parent].uri30 * qty;
-      }
-    }
-    allData.push({
-      code, name: d.name, zaiko: d.zaiko,
-      uri7: d.uri7, uri30: d.uri30,
-      extra7, extra30,
-      total7:  d.uri7  + extra7,
-      total30: d.uri30 + extra30,
-      isHidden: hideCodes.has(code),
-    });
+function renderResults() {
+  const allBrands = new Set([...Object.keys(scanResult), ...Object.keys(invResult)]);
+  let sTQ=0,iTQ=0,sTA=0,iTA=0;
+  const brandRows = [];
+  for (const brand of Array.from(allBrands).sort()) {
+    const sB = scanResult[brand]||{}, iB = invResult[brand]||{};
+    const sQ=Object.values(sB).reduce((s,v)=>s+v.qty,0);
+    const iQ=Object.values(iB).reduce((s,v)=>s+v.qty,0);
+    const sA=Object.values(sB).reduce((s,v)=>s+v.amt,0);
+    const iA=Object.values(iB).reduce((s,v)=>s+v.amt,0);
+    sTQ+=sQ;iTQ+=iQ;sTA+=sA;iTA+=iA;
+    brandRows.push({brand,sQ,iQ,sA,iA,qd:sQ-iQ,ad:sA-iA});
   }
-  document.getElementById('export-btn').style.display = 'inline-block';
-  document.getElementById('order-excel-btn').style.display = 'inline-block';
-  document.getElementById('clear-order-btn').style.display = 'inline-block';
-  renderOrderTable();
-}
+  const qd=sTQ-iTQ, ad=sTA-iTA;
+  document.getElementById('v-s-qty').textContent=sTQ+'個';
+  document.getElementById('v-i-qty').textContent=iTQ+'個';
+  setDiff('v-q-diff',qd,'個');
+  setDiff('v-a-diff',Math.round(ad),'円',true);
+  document.getElementById('summary').classList.remove('hidden');
 
-function statusOrder(d, thr) {
-  if (d.zaiko === 0 && d.isActive) return 0;
-  if (d.isActive && d.remaining <= thr && d.remaining < 999) return 1;
-  if (d.isActive) return 2;
-  return 3;
-}
-
-function renderOrderTable() {
-  if (!allData.length) return;
-  const thr    = parseInt(document.getElementById('threshold').value);
-  const filter = document.getElementById('filter').value;
-  const search = document.getElementById('search').value.toLowerCase();
-  let urgent = 0, zero = 0, active = 0, critical = 0, warning = 0, mild = 0;
-
-  const basisMode = document.getElementById('basis-mode').value;
-  const rows = allData.map(d => {
-    const weekly30 = Math.round(d.total30 / 4.3);
-    const weeklyRate = basisMode === 'week'  ? Math.round(d.total7 * 0.67 + weekly30 * 0.33)
-                     : basisMode === 'month' ? Math.round(d.total7 * 0.33 + weekly30 * 0.67)
-                     : basisMode === 'avg13' ? (d.avg13 !== null ? Math.round(d.avg13) : Math.round((d.total7 + weekly30) / 2))
-                     : basisMode === 'avg26' ? (d.avg26 !== null ? Math.round(d.avg26) : Math.round((d.total7 + weekly30) / 2))
-                     : Math.round((d.total7 + weekly30) / 2);
-    const remaining = weeklyRate > 0 ? d.zaiko / weeklyRate : (d.zaiko > 0 ? 999 : 0);
-    const isActive  = d.total7 > 0 || d.total30 > 0;
-    if (!d.isHidden) {
-      if (isActive) active++;
-      if (d.zaiko === 0 && isActive) zero++;
-      if (remaining <= thr && isActive) urgent++;
-      if (d.zaiko > 0 && d.total30 === 0) critical++;
-      if (d.zaiko > 0 && d.total7 === 0 && remaining > 52) warning++;
-      if (d.zaiko > 0 && remaining > 26 && remaining < 9999) mild++;
-    }
-    return { ...d, remaining, isActive };
-  });
-
-  document.getElementById('stat-total').textContent    = allData.filter(d => !d.isHidden).length.toLocaleString();
-  document.getElementById('stat-active').textContent   = active.toLocaleString();
-  document.getElementById('stat-urgent').textContent   = urgent.toLocaleString();
-  document.getElementById('stat-zero').textContent     = zero.toLocaleString();
-  document.getElementById('stat-critical').textContent = critical.toLocaleString();
-  document.getElementById('stat-warning').textContent  = warning.toLocaleString();
-  document.getElementById('stat-mild').textContent     = mild.toLocaleString();
-
-  let filtered = rows.filter(d => {
-    if (d.isHidden) return false;
-    if (filter === 'urgent') return d.isActive && d.remaining <= thr;
-    if (filter === 'active') return d.isActive;
-    // 要改善：在庫あり（zaiko>0）で販売数が少ない商品
-    if (filter === 'critical') return d.zaiko > 0 && d.total30 === 0; // 過去30日販売ゼロ
-    if (filter === 'warning')  return d.zaiko > 0 && d.total7 === 0 && d.remaining > 52; // 残1年以上
-    if (filter === 'mild')     return d.zaiko > 0 && d.remaining > 26 && d.remaining < 9999; // 残半年以上
-    return true;
-  });
-  if (search) filtered = filtered.filter(d => d.name.toLowerCase().includes(search) || d.code.toLowerCase().includes(search));
-  if (nameFilterActive && selectedNames.size) filtered = filtered.filter(d => selectedNames.has(d.name));
-
-  filtered.sort((a, b) => {
-    let av = sortKey === 'status' ? statusOrder(a, thr) : sortKey === 'code' ? a.code : a[sortKey];
-    let bv = sortKey === 'status' ? statusOrder(b, thr) : sortKey === 'code' ? b.code : b[sortKey];
-    if (av === bv) return 0;
-    return typeof av === 'string' ? (sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)) : (sortAsc ? av - bv : bv - av);
-  });
-
-  ['code','zaiko','total7','extra7','total30','extra30','avg13','avg26','remaining','status'].forEach(k => {
-    const el = document.getElementById('arr-' + k);
-    if (!el) return;
-    el.textContent = sortKey === k ? (sortAsc ? '▲' : '▼') : '▲▼';
-    el.className = 'sort-arrow' + (sortKey === k ? ' active' : '');
-  });
-
-  const tbody = document.getElementById('order-table-body');
-  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="12" class="empty">該当なし</td></tr>'; return; }
-
-  tbody.innerHTML = filtered.slice(0, 500).map(d => {
-    const remText  = d.remaining === 999 ? '—' : Math.round(d.remaining) + '週';
-    const remClass = d.remaining <= 1 && d.isActive ? 'rem-danger' : d.remaining <= thr && d.isActive ? 'rem-warning' : '';
-    const badge    = d.zaiko === 0 && d.isActive ? '<span class="badge badge-danger">在庫切れ</span>'
-                   : d.isActive && d.remaining <= thr && d.remaining < 999 ? '<span class="badge badge-warning">要発注</span>'
-                   : d.isActive ? '<span class="badge badge-success">余裕あり</span>'
-                   : '<span class="badge badge-muted">動きなし</span>';
-    const setTag  = d.extra7 > 0 ? '<span class="set-tag">+set</span>' : '';
-    const e7disp  = d.extra7  > 0 ? d.extra7  : '—';
-    const e30disp = d.extra30 > 0 ? d.extra30 : '—';
-    const avg13disp = d.avg13 !== null ? d.avg13 : '—';
-    const avg26disp = d.avg26 !== null ? d.avg26 : '—';
-    return `<tr>
-      <td title="${d.code}">${d.code}</td>
-      <td title="${d.name}">${d.name}${setTag}</td>
-      <td><input type="number" class="order-qty${orderQty[d.code] ? ' has-value' : ''}" min="0" value="${orderQty[d.code] || ''}" placeholder="" oninput="setOrderQty('${d.code}', this.value, this)" onchange="setOrderQty('${d.code}', this.value, this)"></td>
-      <td>${d.zaiko.toLocaleString()}</td>
-      <td>${d.total7}</td><td>${e7disp}</td>
-      <td>${d.total30}</td><td>${e30disp}</td>
-      <td>${avg13disp}</td><td>${avg26disp}</td>
-      <td class="${remClass}">${remText}</td>
+  document.getElementById('brand-body').innerHTML = brandRows.map(r => {
+    const hasDiff = r.qd!==0 || Math.abs(r.ad)>10;
+    const badge = hasDiff?'<span class="badge badge-ng">差異あり</span>':'<span class="badge badge-ok">一致</span>';
+    return `<tr class="${hasDiff?'diff clickable':''}" ${hasDiff?'onclick="showDetail(\''+r.brand+'\')"':''}>
+      <td class="left">${r.brand}${hasDiff?' <span style="font-size:10px;color:#2980b9;">▶詳細</span>':''}</td>
+      <td>${r.sQ}</td><td>${r.iQ}</td>
+      <td class="${r.qd>0?'pos':r.qd<0?'neg':''}">${r.qd>0?'+':''}${r.qd}</td>
+      <td>${Math.round(r.sA).toLocaleString()}円</td>
+      <td>${Math.round(r.iA).toLocaleString()}円</td>
+      <td class="${Math.abs(r.ad)>10?(r.ad>0?'pos':'neg'):''}">${r.ad>0?'+':''}${Math.round(r.ad).toLocaleString()}円</td>
       <td>${badge}</td>
     </tr>`;
   }).join('');
+  document.getElementById('brand-wrap').classList.remove('hidden');
 }
 
-function sortBy(key) {
-  sortAsc = sortKey === key ? !sortAsc : key === 'remaining';
-  sortKey = key;
-  renderOrderTable();
-}
+function showDetail(brand) {
+  const sB = scanResult[brand]||{}, iB = invResult[brand]||{};
+  const allCodes = new Set([...Object.keys(sB),...Object.keys(iB)]);
 
-function renderTrendTable() {
-  if (!weeklyHistory.length) {
-    document.getElementById('trend-thead').innerHTML = '';
-    document.getElementById('trend-tbody').innerHTML = '<tr><td colspan="5" class="empty">販売データを読み込むと週次推移が表示されます</td></tr>';
-    return;
-  }
+  // 片方にしかない商品を抽出して新旧対応を推定
+  const scanOnly = Object.entries(sB).filter(([c])=>!iB[c]).map(([c,d])=>({code:c,...d,side:'scan'}));
+  const invOnly  = Object.entries(iB).filter(([c])=>!sB[c]).map(([c,d])=>({code:c,...d,side:'inv'}));
 
-  const nWeeks    = parseInt(document.getElementById('trend-weeks').value);
-  const tFilter   = document.getElementById('trend-filter').value;
-  const tSearch   = document.getElementById('trend-search').value.toLowerCase();
-  const weeks     = weeklyHistory.slice(-nWeeks);
-  const latestIdx = weeks.length - 1;
-
-  // 全SKUを収集
-  const allCodes = new Set();
-  weeks.forEach(w => Object.keys(w.data).forEach(c => allCodes.add(c)));
-
-  // 各SKUの週次データを構築
-  const rows = [];
-  for (const code of allCodes) {
-    const name = weeks.map(w => w.data[code]?.name).filter(Boolean).pop() || code;
-    const vals = weeks.map(w => w.data[code]?.total7 ?? null);
-    const latest = vals[latestIdx];
-    const prev   = vals[latestIdx - 1];
-
-    // 足切り：直近週計3未満はフラグ対象外
-    let flag = '';
-    if (latest !== null && prev !== null && latest >= 3) {
-      const ratio = prev === 0 ? (latest > 0 ? Infinity : 0) : (latest - prev) / prev;
-      if (ratio >= 0.5)       flag = 'up';
-      else if (ratio <= -0.5) flag = 'down';
+  // 個数・単価が一致するペアを推定
+  const matchedPairs = new Set();
+  const pairMap = {};
+  for (const s of scanOnly) {
+    for (const iv of invOnly) {
+      const priceMatch = s.price > 0 && iv.price > 0 && Math.abs(s.price - iv.price) < s.price * 0.05;
+      const qtyMatch   = s.qty === iv.qty;
+      if (priceMatch && qtyMatch && !matchedPairs.has(s.code) && !matchedPairs.has(iv.code)) {
+        matchedPairs.add(s.code);
+        matchedPairs.add(iv.code);
+        pairMap[s.code]  = iv.code;
+        pairMap[iv.code] = s.code;
+      }
     }
-
-    if (tFilter === 'up'      && flag !== 'up')   continue;
-    if (tFilter === 'down'    && flag !== 'down')  continue;
-    if (tFilter === 'flagged' && !flag)            continue;
-    if (tSearch && !name.toLowerCase().includes(tSearch) && !code.toLowerCase().includes(tSearch)) continue;
-
-    rows.push({ code, name, vals, flag, latest: latest ?? 0 });
   }
 
-  rows.sort((a, b) => {
-    if (a.flag && !b.flag) return -1;
-    if (!a.flag && b.flag) return 1;
-    return b.latest - a.latest;
+  // 全商品を行に変換
+  const rows = Array.from(allCodes).map(code => {
+    const s = sB[code], iv = iB[code];
+    return {
+      code,
+      name: s?.name || iv?.name || '',
+      sQty: s?.qty||0, iQty: iv?.qty||0,
+      sPrice: s?.price||0, iPrice: iv?.price||0,
+      sAmt: s?.amt||0, iAmt: iv?.amt||0,
+      qd: (s?.qty||0)-(iv?.qty||0),
+      ad: (s?.amt||0)-(iv?.amt||0),
+      isPaired: matchedPairs.has(code),
+      pairCode: pairMap[code]||null,
+    };
+  }).sort((a,b) => {
+    if (a.isPaired !== b.isPaired) return a.isPaired ? 1 : -1;
+    return Math.abs(b.ad) - Math.abs(a.ad);
   });
 
-  // ヘッダー
-  const thWeeks = weeks.map((w, i) =>
-    `<th style="text-align:right;width:60px;${i===latestIdx?'font-weight:500;color:#1a1a1a;':''}">${w.date.slice(5)}</th>`
-  ).join('');
-  document.getElementById('trend-thead').innerHTML = `<tr>
-    <th style="width:110px;text-align:left;">SKUコード</th>
-    <th style="text-align:left;">商品名</th>
-    ${thWeeks}
-    <th style="width:60px;text-align:center;">前週比</th>
-  </tr>`;
-
-  if (!rows.length) {
-    document.getElementById('trend-tbody').innerHTML = '<tr><td colspan="' + (weeks.length+3) + '" class="empty">該当なし</td></tr>';
-    return;
-  }
-
-  document.getElementById('trend-tbody').innerHTML = rows.slice(0, 300).map(d => {
-    const latest = d.vals[latestIdx];
-    const prev   = d.vals[latestIdx - 1];
-    let ratioDisp = '—', ratioClass = 'trend-flat', flagBadge = '';
-    if (latest !== null && prev !== null) {
-      if (prev === 0 && latest > 0) { ratioDisp = '新規'; ratioClass = 'trend-up'; }
-      else if (prev === 0) { ratioDisp = '—'; }
-      else {
-        const pct = Math.round((latest - prev) / prev * 100);
-        ratioDisp = (pct > 0 ? '+' : '') + pct + '%';
-        ratioClass = pct >= 50 ? 'trend-up' : pct <= -50 ? 'trend-down' : 'trend-flat';
-      }
-    }
-    if (d.flag === 'up')   flagBadge = ' <span class="badge badge-up">急増</span>';
-    if (d.flag === 'down') flagBadge = ' <span class="badge badge-down">急減</span>';
-
-    const tdWeeks = d.vals.map((v, i) => {
-      const style = i === latestIdx ? 'font-weight:500;' : 'color:#888;';
-      return `<td style="text-align:right;${style}">${v !== null ? v : '—'}</td>`;
-    }).join('');
-
-    return `<tr>
-      <td style="font-family:monospace;font-size:11px;color:#888;" title="${d.code}">${d.code}</td>
-      <td title="${d.name}">${d.name}${flagBadge}</td>
-      ${tdWeeks}
-      <td style="text-align:center;" class="${ratioClass}">${ratioDisp}</td>
+  document.getElementById('detail-title').textContent = brand + '　商品別詳細';
+  document.getElementById('detail-body').innerHTML = rows.map(r => {
+    const hasDiff = r.qd!==0 || Math.abs(r.ad)>10;
+    const rowClass = r.isPaired ? 'match-pair' : hasDiff ? 'diff' : '';
+    const pairLabel = r.isPaired ? '<span class="match-label">番号変更推定</span>' : '';
+    const qdc = r.qd>0?'pos':r.qd<0?'neg':'';
+    const adc = Math.abs(r.ad)>10?(r.ad>0?'pos':'neg'):'';
+    return `<tr class="${rowClass}">
+      <td class="left">${r.code}${pairLabel}</td>
+      <td class="left" title="${r.name}">${r.name.slice(0,30)}</td>
+      <td>${r.sQty||'—'}</td><td>${r.iQty||'—'}</td>
+      <td class="${qdc}">${r.qd>0?'+':''}${r.qd}</td>
+      <td>${r.sPrice?Math.round(r.sPrice).toLocaleString()+'円':'—'}</td>
+      <td>${r.iPrice?Math.round(r.iPrice).toLocaleString()+'円':'—'}</td>
+      <td>${r.sAmt?Math.round(r.sAmt).toLocaleString()+'円':'—'}</td>
+      <td>${r.iAmt?Math.round(r.iAmt).toLocaleString()+'円':'—'}</td>
+      <td class="${adc}">${r.ad>0?'+':''}${Math.round(r.ad).toLocaleString()}円</td>
     </tr>`;
   }).join('');
+  document.getElementById('detail-wrap').classList.remove('hidden');
+  document.getElementById('detail-wrap').scrollIntoView({behavior:'smooth'});
 }
 
-function toggleNameFilter(e) {
-  e.stopPropagation();
-  const popup = document.getElementById('name-filter-popup');
-  const rect  = e.target.getBoundingClientRect();
-  if (popup.classList.contains('open')) { popup.classList.remove('open'); return; }
-  popup.style.top  = (rect.bottom + 4) + 'px';
-  popup.style.left = rect.left + 'px';
-  popup.classList.add('open');
-  document.getElementById('name-filter-search').value = '';
-  renderNameFilterList();
+function setDiff(id, val, unit, isMoney) {
+  const el = document.getElementById(id);
+  el.textContent = (val>0?'+':'')+( isMoney?val.toLocaleString():val)+unit;
+  el.className = 'stat-value '+(val===0?'good':'danger');
 }
 
-function renderNameFilterList() {
-  const q     = document.getElementById('name-filter-search').value.toLowerCase();
-  const names = [...new Set(allData.map(d => d.name))].sort();
-  document.getElementById('name-filter-list').innerHTML =
-    (q ? names.filter(n => n.toLowerCase().includes(q)) : names).map(n => {
-      const checked = !nameFilterActive || selectedNames.has(n);
-      return `<label><input type="checkbox" value="${n.replace(/"/g,'&quot;')}" ${checked?'checked':''}> ${n}</label>`;
-    }).join('');
+function setStatus(msg, cls) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status'+(cls?' '+cls:'');
 }
 
-function selectAllNames() { document.querySelectorAll('#name-filter-list input').forEach(cb => cb.checked = true); }
-function clearAllNames()  { document.querySelectorAll('#name-filter-list input').forEach(cb => cb.checked = false); }
-
-function applyNameFilter() {
-  const checked = [...document.querySelectorAll('#name-filter-list input:checked')].map(cb => cb.value);
-  const all     = [...new Set(allData.map(d => d.name))];
-  nameFilterActive = checked.length < all.length;
-  selectedNames    = new Set(checked);
-  document.getElementById('name-filter-btn').classList.toggle('active', nameFilterActive);
-  document.getElementById('name-filter-popup').classList.remove('open');
-  renderOrderTable();
-}
-
-document.addEventListener('click', e => {
-  if (!document.getElementById('name-filter-popup').contains(e.target) && e.target.id !== 'name-filter-btn')
-    document.getElementById('name-filter-popup').classList.remove('open');
-});
-
-function setOrderQty(code, val, el) {
-  const n = parseInt(val);
-  if (val === '' || isNaN(n) || n <= 0) {
-    delete orderQty[code];
-    el.classList.remove('has-value');
-  } else {
-    orderQty[code] = n;
-    el.classList.add('has-value');
-  }
-}
-
-function clearOrderQty() {
-  if (!confirm('発注数をすべてリセットしますか？')) return;
-  orderQty = {};
-  renderOrderTable();
-}
-
-function exportOrderExcel() {
-  const items = Object.entries(orderQty).map(([code, qty]) => {
-    const d = salesData[code];
-    if (!d) return null;
-    const jan = (d.jan || '').trim();
-    const productNo = jan.length >= 12 ? jan.slice(7, 12) : '';
-    return { code, jan, productNo, name: d.name, price: d.price, qty };
-  }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-
-  if (!items.length) { alert('発注数が入力されていません'); return; }
-
-  const rowCount = Math.ceil(items.length / 10) * 10;
-  const totalQty   = items.reduce((s, d) => s + d.qty, 0);
-  const totalPrice = items.reduce((s, d) => s + d.price * d.qty, 0);
-
-  // CSVデータを作成してhidden formでPythonスクリプトに渡す
-  // ここではブラウザ完結でSheetJS proなしでできる範囲でスタイル付きExcelを生成
-  // xlsxライブラリをCDNから読み込んで生成
-  if (typeof XLSX === 'undefined') {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    s.onload = () => doExport(items, rowCount, totalQty, totalPrice);
-    document.head.appendChild(s);
-  } else {
-    doExport(items, rowCount, totalQty, totalPrice);
-  }
-}
-
-function doExport(items, rowCount, totalQty, totalPrice) {
-  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-
-  const wsData = [
-    ['No', '商品No', 'JAN', '商品名', '数量', '単価（税込）', '金額（税込）']
-  ];
-
-  for (let i = 0; i < rowCount; i++) {
-    const item = items[i];
-    if (item) {
-      wsData.push([i+1, item.productNo, item.jan, item.name, item.qty, item.price, item.price * item.qty]);
-    } else {
-      wsData.push([i+1, '', '', '', '', '', '']);
-    }
-  }
-  wsData.push(['', '', '', 'Total', totalQty, '', totalPrice]);
-
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [
-    {wch:5},
-    {wch:8},
-    {wch:15},
-    {wch:45},
-    {wch:7},
-    {wch:12},
-    {wch:14},
-  ];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '発注書');
-  XLSX.writeFile(wb, '発注書_' + today + '.xlsx');
-}
-
-function exportCSV() {
-  const thr  = parseInt(document.getElementById('threshold').value);
-  const basisModeEx = document.getElementById('basis-mode').value;
-  const rows = allData.map(d => {
-    const weekly30 = Math.round(d.total30 / 4.3);
-    const weeklyRate = basisModeEx === 'week'  ? Math.round(d.total7 * 0.67 + weekly30 * 0.33)
-                     : basisModeEx === 'month' ? Math.round(d.total7 * 0.33 + weekly30 * 0.67)
-                     : basisModeEx === 'avg13' ? (d.avg13 !== null ? Math.round(d.avg13) : Math.round((d.total7 + weekly30) / 2))
-                     : basisModeEx === 'avg26' ? (d.avg26 !== null ? Math.round(d.avg26) : Math.round((d.total7 + weekly30) / 2))
-                     : Math.round((d.total7 + weekly30) / 2);
-    const remaining = weeklyRate > 0 ? d.zaiko / weeklyRate : 999;
-    return { ...d, remaining };
-  }).filter(d => !d.isHidden && (d.total7 > 0 || d.total30 > 0) && d.remaining <= thr)
-    .sort((a, b) => a.remaining - b.remaining);
-  const bom  = '\uFEFF';
-  const head = 'SKUコード,商品名,在庫数,週計,うちセット週販,月計,うちセット月販,残週数\n';
-  const body = rows.map(d =>
-    `${d.code},"${d.name}",${d.zaiko},${d.total7},${d.extra7},${d.total30},${d.extra30},${Math.round(d.remaining)}`
-  ).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([bom+head+body], {type:'text/csv'}));
-  a.download = '要発注リスト.csv'; a.click();
-}
-
-function exportJSON() {
-  if (!weeklyHistory.length) { alert('エクスポートするデータがありません'); return; }
-  const blob = new Blob([JSON.stringify(weeklyHistory, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'hacchujo_data.json';
-  a.click();
-}
-
-function importJSON(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const imported = JSON.parse(e.target.result);
-      if (!Array.isArray(imported)) throw new Error('フォーマットエラー');
-      const merged = [...weeklyHistory];
-      for (const w of imported) {
-        const idx = merged.findIndex(m => m.date === w.date);
-        if (idx >= 0) merged[idx] = w;
-        else merged.push(w);
-      }
-      merged.sort((a, b) => a.date.localeCompare(b.date));
-      while (merged.length > MAX_WEEKS) merged.shift();
-      weeklyHistory = merged;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(weeklyHistory));
-      updateWeekChips();
-      renderTrendTable();
-      alert('インポートしました（' + weeklyHistory.length + '週分）');
-    } catch(e) {
-      alert('インポートに失敗しました。正しいJSONファイルか確認してください。');
-    }
-  };
-  reader.readAsText(file);
-  document.getElementById('json-import').value = '';
-}
-
-loadStorage();
-
-function startResize(e, thId) {
-  e.preventDefault();
-  const th = document.getElementById(thId);
-  const startX = e.clientX;
-  const startW = th.offsetWidth;
-  function onMove(e) {
-    const newW = Math.max(80, startW + e.clientX - startX);
-    th.style.width = newW + 'px';
-    th.style.minWidth = newW + 'px';
-  }
-  function onUp() {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-  }
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
+function resetAll() {
+  ['scan','invoice'].forEach(t=>{
+    delete raw[t];
+    document.getElementById('ok-'+t).textContent='';
+    document.getElementById('f-'+t).value='';
+    document.getElementById('cfg-'+t).classList.add('hidden');
+  });
+  scanResult={}; invResult={};
+  document.getElementById('btn-analyze').disabled=true;
+  document.getElementById('summary').classList.add('hidden');
+  document.getElementById('brand-wrap').classList.add('hidden');
+  document.getElementById('detail-wrap').classList.add('hidden');
+  setStatus('スキャンデータと請求書を読み込んでください');
 }
 </script>
 </body>
