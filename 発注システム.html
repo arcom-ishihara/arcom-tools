@@ -453,6 +453,18 @@ function compute() {
         extra30 += salesData[parent].uri30 * qty;
       }
     }
+    // JSONから3ヶ月（13週）・半年（26週）の平均週販を計算
+    let avg13 = null, avg26 = null;
+    if (weeklyHistory.length >= 4) {
+      const weeks13 = weeklyHistory.slice(-13);
+      const sum13 = weeks13.reduce((s,w) => s + (w.data[code]?.total7 || 0), 0);
+      avg13 = Math.round(sum13 / weeks13.length * 10) / 10;
+    }
+    if (weeklyHistory.length >= 8) {
+      const weeks26 = weeklyHistory.slice(-26);
+      const sum26 = weeks26.reduce((s,w) => s + (w.data[code]?.total7 || 0), 0);
+      avg26 = Math.round(sum26 / weeks26.length * 10) / 10;
+    }
     allData.push({
       code, name: d.name, zaiko: d.zaiko,
       uri7: d.uri7, uri30: d.uri30,
@@ -460,6 +472,7 @@ function compute() {
       total7:  d.uri7  + extra7,
       total30: d.uri30 + extra30,
       isHidden: hideCodes.has(code),
+      avg13, avg26,
     });
   }
   document.getElementById('export-btn').style.display = 'inline-block';
