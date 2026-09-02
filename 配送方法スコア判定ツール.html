@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>配送方法スコア判定ツール</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+
+  :root{
+    --kraft: #cdb992;
+    --kraft-dark: #a98f5f;
+    --tag: #f7f2e7;
+    --tag-edge: #e4d9c0;
+    --ink: #2b2620;
+    --ink-soft: #6b6152;
+    --brick: #a83f22;
+    --ok: #3f6b4b;
+    --ok-bg: #e6ede5;
+    --warn: #b5791f;
+    --warn-bg: #f3e6cd;
+    --bad: #a83f22;
+    --bad-bg: #f2e0d8;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      repeating-linear-gradient(135deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 2px, transparent 2px, transparent 14px),
+      var(--kraft);
+    font-family: 'IBM Plex Sans JP', sans-serif;
+    color: var(--ink);
+    padding: 32px 16px 60px;
+  }
+
+  .wrap{ max-width: 880px; margin: 0 auto; }
+
+  header{ margin-bottom: 22px; padding-bottom: 16px; border-bottom: 2px dashed var(--kraft-dark); }
+  header h1{ font-size: 21px; font-weight: 700; margin: 0 0 4px; letter-spacing: 0.02em; }
+  header p{ margin: 0; font-size: 13px; color: var(--ink-soft); line-height: 1.6; }
+
+  .tag{
+    position: relative;
+    background: var(--tag);
+    border: 1px solid var(--tag-edge);
+    border-radius: 4px;
+    box-shadow: 0 10px 24px rgba(60,45,20,0.18), 0 1px 0 rgba(255,255,255,0.5) inset;
+    padding: 28px 28px 24px;
+    margin-bottom: 20px;
+  }
+  .tag::before{
+    content:"";
+    position:absolute;
+    top: 18px; left: 18px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--kraft);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.4);
+  }
+
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 6px; }
+  @media (max-width: 640px){ .grid{ grid-template-columns: 1fr; } }
+
+  .field{ margin-bottom: 16px; }
+  .field label{ display:block; font-size: 12.5px; font-weight: 500; color: var(--ink-soft); margin-bottom: 5px; }
+  .field .inputrow{ display:flex; align-items:center; border-bottom: 2px solid var(--kraft-dark); padding-bottom: 4px; }
+  .field input{
+    flex:1; border:none; background:transparent;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 26px; font-weight: 600; color: var(--ink);
+    outline:none; width: 100%; min-width: 0;
+  }
+  .field input::placeholder{ color: #c9bfa8; }
+  .field .unit{ font-size: 13px; color: var(--ink-soft); margin-left: 8px; white-space:nowrap; }
+
+  .section-label{ font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink-soft); margin: 4px 0 14px; }
+
+  .divider-v{ border-left: 2px dashed var(--kraft-dark); padding-left: 28px; }
+  @media (max-width: 640px){ .divider-v{ border-left:none; border-top: 2px dashed var(--kraft-dark); padding-left:0; padding-top: 20px; } }
+
+  .score-block{ text-align:left; margin-bottom: 18px; }
+  .score-caption{ font-size: 12.5px; color: var(--ink-soft); margin-bottom: 2px; }
+  .score-value{ font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 56px; line-height: 1; color: var(--brick); }
+  .score-value.dash{ color: #b9ae95; font-size: 40px; }
+  .score-note{ font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; line-height: 1.5; }
+
+  .alert{ border-left: 4px solid var(--warn); background: var(--warn-bg); padding: 10px 12px; font-size: 12.5px; line-height: 1.6; border-radius: 2px; margin-bottom: 14px; }
+  .alert.bad{ border-left-color: var(--bad); background: var(--bad-bg); }
+
+  table.fits{ width:100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+  table.fits th{ text-align:left; font-weight: 500; color: var(--ink-soft); padding: 5px 4px; border-bottom: 1px solid var(--tag-edge); font-size: 11.5px; }
+  table.fits td{ padding: 7px 4px; border-bottom: 1px solid var(--tag-edge); font-family: 'IBM Plex Mono', monospace; vertical-align: middle; }
+  table.fits td.name{ font-family:'IBM Plex Sans JP',sans-serif; }
+  .status-ok{ color: var(--ok); font-weight:700; }
+  .status-bad{ color: #b9ae95; font-weight:700; }
+  .count-input{
+    width: 52px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brick);
+    border: none;
+    border-bottom: 2px solid var(--kraft-dark);
+    background: transparent;
+    outline: none;
+    text-align: center;
+  }
+  .count-input.overridden{ border-bottom-color: var(--brick); }
+  .count-unit{ font-size: 11.5px; color: var(--ink-soft); margin-left: 3px; }
+  .count-cell{ display:flex; align-items:center; }
+  .dash-cell{ color: #b9ae95; }
+  tr.row-selected td{ background: var(--ok-bg); }
+  tr.row-mismatch td{ background: var(--bad-bg); }
+
+  /* settings panel */
+  .settings{
+    background: var(--tag);
+    border: 1px solid var(--tag-edge);
+    border-radius: 4px;
+    padding: 18px 24px;
+  }
+  .settings summary{
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    letter-spacing: 0.04em;
+    list-style: none;
+  }
+  .settings summary::-webkit-details-marker{ display:none; }
+  .settings summary::before{ content: "▸ "; }
+  .settings[open] summary::before{ content: "▾ "; }
+  .settings-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 16px;
+  }
+  @media (max-width: 640px){ .settings-grid{ grid-template-columns: 1fr; } }
+  .settings-field label{
+    display:block;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    line-height: 1.5;
+  }
+  .settings-field .inputrow{
+    display:flex; align-items:center;
+    border-bottom: 2px solid var(--kraft-dark);
+    padding-bottom: 4px;
+  }
+  .settings-field input{
+    flex:1; border:none; background:transparent;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px; font-weight: 600; color: var(--ink);
+    outline:none; width:100%; min-width:0;
+  }
+  .settings-field .unit{ font-size: 12px; color: var(--ink-soft); margin-left: 6px; }
+  .settings-note{ font-size: 11.5px; color: var(--ink-soft); margin-top: 12px; line-height: 1.6; }
+
+  footer{ text-align:center; font-size: 11.5px; color: var(--ink-soft); margin-top: 22px; opacity: 0.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>配送方法スコア判定ツール</h1>
+    <p>商品の縦・横・高さ（mm）を入力すると、GoQシステムに登録するスコア（整数）を自動計算します。梱包材の内寸から、下の設定欄で指定した余裕分を差し引いて判定します。</p>
+  </header>
+
+  <div class="tag">
+    <div class="grid">
+      <div>
+        <div class="section-label">寸法を入力</div>
+        <div class="field">
+          <label>この商品の配送方法設定</label>
+          <div class="inputrow" style="border-bottom:2px solid var(--kraft-dark);">
+            <select id="shipMethod" style="flex:1;border:none;background:transparent;font-family:'IBM Plex Sans JP',sans-serif;font-size:15px;font-weight:600;color:var(--ink);outline:none;padding:6px 0;">
+              <option value="envelope">ネコポス（封筒）</option>
+              <option value="carton">ネコポス（段ボール）</option>
+              <option value="compact">宅急便コンパクト</option>
+              <option value="fixed">ヤマト宅急便固定（スコア不要）</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>縦 (mm)</label>
+          <div class="inputrow">
+            <input type="number" id="len" placeholder="0" min="0" step="1">
+            <span class="unit">mm</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>横 (mm)</label>
+          <div class="inputrow">
+            <input type="number" id="wid" placeholder="0" min="0" step="1">
+            <span class="unit">mm</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>高さ・厚み (mm)</label>
+          <div class="inputrow">
+            <input type="number" id="hei" placeholder="0" min="0" step="1">
+            <span class="unit">mm</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider-v">
+        <div class="section-label">判定結果</div>
+        <div class="score-block">
+          <div class="score-caption">GoQシステムに入力するスコア</div>
+          <div class="score-value dash" id="scoreOut">—</div>
+          <div class="score-note" id="scoreNote">寸法を入力してください</div>
+        </div>
+
+        <div id="alerts"></div>
+
+        <table class="fits">
+          <thead>
+            <tr><th>梱包材</th><th>判定</th><th>入る個数</th></tr>
+          </thead>
+          <tbody id="fitsBody"></tbody>
+        </table>
+        <div class="settings-note" style="margin-top:10px;">個数は理論値（自動計算）が初期値です。実際の梱包数と異なる場合は数字を直接書き換えてください。書き換えると赤い下線がつき、その数値をもとにスコアを再計算します。</div>
+      </div>
+    </div>
+  </div>
+
+  <details class="settings" open>
+    <summary>切り替えしきい値（固定値）</summary>
+    <div class="settings-grid">
+      <div class="settings-field">
+        <label>宅急便コンパクトのしきい値<br>（超えたらヤマト宅急便）</label>
+        <div class="inputrow">
+          <input type="number" id="threshCompact" value="100" min="1" step="1">
+          <span class="unit">点</span>
+        </div>
+      </div>
+      <div class="settings-field">
+        <label>ネコポス（段ボール）のしきい値<br>（超えたら宅急便コンパクト）</label>
+        <div class="inputrow">
+          <input type="number" id="threshCarton" value="108" min="1" step="1">
+          <span class="unit">点</span>
+        </div>
+      </div>
+      <div class="settings-field">
+        <label>ネコポス（封筒）のしきい値<br>（超えたら宅急便コンパクト）</label>
+        <div class="inputrow">
+          <input type="number" id="threshEnvelope" value="144" min="1" step="1">
+          <span class="unit">点</span>
+        </div>
+      </div>
+    </div>
+    <div class="settings-note">
+      ここで設定した数値は、下の余裕(マージン)設定を変えても自動では変わりません。GoQシステムの振り分けルールに登録した数値と必ず一致させてください。
+    </div>
+  </details>
+
+  <details class="settings">
+    <summary>余裕(マージン)設定</summary>
+    <div class="settings-grid">
+      <div class="settings-field">
+        <label>底面(縦横)の余裕</label>
+        <div class="inputrow">
+          <input type="number" id="marginFootprint" value="20" min="0" step="1">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+      <div class="settings-field">
+        <label>硬い箱の厚みの余裕<br>（コンパクト／段ボール）</label>
+        <div class="inputrow">
+          <input type="number" id="marginHeightRigid" value="0" min="0" step="1">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+      <div class="settings-field">
+        <label>封筒の厚みの余裕</label>
+        <div class="inputrow">
+          <input type="number" id="marginHeightEnv" value="0" min="0" step="1">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+    </div>
+    <div class="settings-note">
+      厚み方向は余裕なし（0mm）を初期値にしています。底面(縦横)の余裕は20mmです。
+    </div>
+  </details>
+
+  <footer>内寸基準：宅急便コンパクト247×193×47mm ／ ネコポス段ボール267×192×26mm ／ クッション封筒292×228mm（いずれも設定した余裕を差し引いた「有効寸法」で判定）</footer>
+</div>
+
+<script>
+  const COMPACT_RAW = { name: '宅急便コンパクト', w: 247, h: 193, heightLimit: 47 };
+  const CARTON_RAW  = { name: 'ネコポス（段ボール）', w: 267, h: 192, heightLimit: 26 };
+  const ENV_RAW     = { name: 'ネコポス（封筒）', w: 292, h: 228, heightLimitOfficial: 30, heightLimitPractical: 40 };
+
+  function footprintFits(L, W, boxW, boxH){
+    return (L <= boxW && W <= boxH) || (L <= boxH && W <= boxW);
+  }
+
+  // realistic "how many actually tile" count: grid along each axis, best of two item orientations
+  function gridCount(boxW, boxH, itemL, itemW){
+    const opt1 = Math.floor(boxW / itemL) * Math.floor(boxH / itemW);
+    const opt2 = Math.floor(boxW / itemW) * Math.floor(boxH / itemL);
+    return Math.max(opt1, opt2);
+  }
+
+  const lenEl = document.getElementById('len');
+  const widEl = document.getElementById('wid');
+  const heiEl = document.getElementById('hei');
+  const mFootEl = document.getElementById('marginFootprint');
+  const mRigidEl = document.getElementById('marginHeightRigid');
+  const mEnvEl = document.getElementById('marginHeightEnv');
+  const threshCompactEl = document.getElementById('threshCompact');
+  const threshCartonEl = document.getElementById('threshCarton');
+  const threshEnvelopeEl = document.getElementById('threshEnvelope');
+  const shipMethodEl = document.getElementById('shipMethod');
+  const scoreOut = document.getElementById('scoreOut');
+  const scoreNote = document.getElementById('scoreNote');
+  const alertsEl = document.getElementById('alerts');
+  const fitsBody = document.getElementById('fitsBody');
+
+  // manual overrides for "入る個数", keyed by packaging id. null = use theoretical value.
+  let overrides = { compact: null, carton: null, envelope: null };
+
+  function clampPositive(v, fallback){
+    return (isFinite(v) && v > 0) ? v : fallback;
+  }
+
+  function render(){
+    const L = parseFloat(lenEl.value);
+    const W = parseFloat(widEl.value);
+    const H = parseFloat(heiEl.value);
+    const method = shipMethodEl.value; // 'env' | 'carton' | 'compact' | 'fixed'
+
+    const mFoot = Math.max(0, parseFloat(mFootEl.value) || 0);
+    const mRigid = Math.max(0, parseFloat(mRigidEl.value) || 0);
+    const mEnv = Math.max(0, parseFloat(mEnvEl.value) || 0);
+
+    const COMPACT = {
+      name: COMPACT_RAW.name,
+      w: clampPositive(COMPACT_RAW.w - mFoot, 1),
+      h: clampPositive(COMPACT_RAW.h - mFoot, 1),
+      heightLimit: clampPositive(COMPACT_RAW.heightLimit - mRigid, 1)
+    };
+    const CARTON = {
+      name: CARTON_RAW.name,
+      w: clampPositive(CARTON_RAW.w - mFoot, 1),
+      h: clampPositive(CARTON_RAW.h - mFoot, 1),
+      heightLimit: clampPositive(CARTON_RAW.heightLimit - mRigid, 1)
+    };
+    const ENV = {
+      name: ENV_RAW.name,
+      w: clampPositive(ENV_RAW.w - mFoot, 1),
+      h: clampPositive(ENV_RAW.h - mFoot, 1),
+      heightLimitOfficial: clampPositive(ENV_RAW.heightLimitOfficial - mEnv, 1),
+      heightLimitPractical: clampPositive(ENV_RAW.heightLimitPractical - mEnv, 1)
+    };
+
+    const compactArea = COMPACT.w * COMPACT.h;
+    const cartonArea = CARTON.w * CARTON.h;
+    const envArea = ENV.w * ENV.h;
+
+    // fixed thresholds — set independently in settings, not derived from margins
+    const THRESH = {
+      compact: Math.max(1, parseFloat(threshCompactEl.value) || 100),
+      carton: Math.max(1, parseFloat(threshCartonEl.value) || 108),
+      envelope: Math.max(1, parseFloat(threshEnvelopeEl.value) || 144)
+    };
+
+    alertsEl.innerHTML = '';
+    fitsBody.innerHTML = '';
+
+    if (method === 'fixed'){
+      scoreOut.classList.add('dash');
+      scoreOut.style.fontSize = '28px';
+      scoreOut.textContent = '設定不要';
+      scoreNote.textContent = 'この商品はヤマト宅急便固定のため、スコアは設定不要です。';
+      return;
+    }
+    scoreOut.style.fontSize = '';
+
+    if (!L || !W || !H || L<=0 || W<=0 || H<=0){
+      scoreOut.textContent = '—';
+      scoreOut.classList.add('dash');
+      scoreOut.style.fontSize = '';
+      scoreNote.textContent = '縦・横・高さをすべて入力してください';
+      return;
+    }
+    scoreOut.classList.remove('dash');
+
+    const productArea = L * W;
+
+    const fitsCompact = footprintFits(L, W, COMPACT.w, COMPACT.h) && H <= COMPACT.heightLimit;
+    const fitsCarton  = footprintFits(L, W, CARTON.w, CARTON.h) && H <= CARTON.heightLimit;
+    const envFootprint = footprintFits(L, W, ENV.w, ENV.h);
+    const fitsEnvStandard = envFootprint && H <= ENV.heightLimitOfficial;
+    const fitsEnvExtended = envFootprint && H > ENV.heightLimitOfficial && H <= ENV.heightLimitPractical;
+    const fitsEnvAtAll = fitsEnvStandard || fitsEnvExtended;
+
+    const rows = [
+      { key: 'compact',  label: COMPACT.name, fits: fitsCompact, w: COMPACT.w, h: COMPACT.h },
+      { key: 'carton',   label: CARTON.name,  fits: fitsCarton,  w: CARTON.w,  h: CARTON.h },
+      { key: 'envelope', label: ENV.name,     fits: fitsEnvAtAll, w: ENV.w, h: ENV.h, extended: fitsEnvExtended },
+    ];
+
+    let notes = [];
+    let selectedImplied = null;
+
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      const isSelectedRow = (r.key === method);
+
+      if (!r.fits){
+        tr.innerHTML = `
+          <td class="name">${r.label}</td>
+          <td><span class="status-bad">✕ 収まらない</span></td>
+          <td class="dash-cell">—</td>
+        `;
+        if (isSelectedRow) tr.className = 'row-mismatch';
+        fitsBody.appendChild(tr);
+        return;
+      }
+
+      const theoretical = r.extended ? 1 : Math.max(1, gridCount(r.w, r.h, L, W));
+      const count = overrides[r.key] !== null ? overrides[r.key] : theoretical;
+      const implied = Math.max(1, Math.round(THRESH[r.key] / count));
+      if (isSelectedRow) selectedImplied = implied;
+
+      const isOverridden = overrides[r.key] !== null;
+
+      const tdCount = document.createElement('td');
+      const cellDiv = document.createElement('div');
+      cellDiv.className = 'count-cell';
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '1';
+      input.step = '1';
+      input.className = 'count-input' + (isOverridden ? ' overridden' : '');
+      input.value = count;
+      input.addEventListener('input', (e) => {
+        const v = parseInt(e.target.value, 10);
+        overrides[r.key] = (isFinite(v) && v > 0) ? v : theoretical;
+        render();
+      });
+      const unit = document.createElement('span');
+      unit.className = 'count-unit';
+      unit.textContent = '個';
+      cellDiv.appendChild(input);
+      cellDiv.appendChild(unit);
+      tdCount.appendChild(cellDiv);
+
+      const tdName = document.createElement('td');
+      tdName.className = 'name';
+      tdName.textContent = r.label;
+
+      const tdStatus = document.createElement('td');
+      tdStatus.innerHTML = '<span class="status-ok">○ 収まる</span>';
+
+      tr.appendChild(tdName);
+      tr.appendChild(tdStatus);
+      tr.appendChild(tdCount);
+      if (isSelectedRow) tr.className = 'row-selected';
+      fitsBody.appendChild(tr);
+
+      if (r.extended){
+        notes.push('封筒：厚みが公式基準(30mm)を超えています（実績では95%以上収まっていますが、複数個口を避けるため個数の初期値を1個にしています。実績に応じて書き換え可能です）。');
+      }
+    });
+
+    const selectedRow = rows.find(r => r.key === method);
+
+    if (!selectedRow.fits){
+      scoreOut.textContent = '要確認';
+      scoreOut.style.fontSize = '28px';
+      scoreNote.textContent = `設定されている配送方法（${selectedRow.label}）にこの商品は実際には収まりません。配送方法の設定を見直してください。`;
+      alertsEl.innerHTML = '<div class="alert bad">設定と実寸が矛盾しています。上の表で赤くなっている行をご確認ください。</div>';
+      return;
+    }
+
+    scoreOut.textContent = selectedImplied;
+    scoreNote.textContent = notes.length
+      ? `下の注意事項を確認のうえ登録してください。設定されている配送方法（${selectedRow.label}）の個数からスコアを算出しています。`
+      : `このままGoQシステムの商品設定に入力してください（設定されている配送方法：${selectedRow.label}）。`;
+
+    notes.forEach(n => {
+      const d = document.createElement('div');
+      d.className = 'alert';
+      d.textContent = n;
+      alertsEl.appendChild(d);
+    });
+  }
+
+  [lenEl, widEl, heiEl].forEach(el => el.addEventListener('input', () => {
+    overrides = { compact: null, carton: null, envelope: null };
+    render();
+  }));
+  [mFootEl, mRigidEl, mEnvEl, threshCompactEl, threshCartonEl, threshEnvelopeEl, shipMethodEl].forEach(el => el.addEventListener('input', render));
+  render();
+</script>
+</body>
+</html>
