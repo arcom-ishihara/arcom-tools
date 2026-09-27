@@ -27,11 +27,12 @@ input[type=range] { width: 100px; }
 select, input[type=text] { font-size: 13px; border: 0.5px solid #ccc; border-radius: 6px; padding: 5px 8px; background: #fff; color: #1a1a1a; }
 input[type=text] { width: 200px; }
 .threshold-out { font-size: 13px; font-weight: 500; min-width: 32px; }
-.table-wrap { overflow-x: auto; background: #fff; border: 0.5px solid #ddd; border-radius: 10px; }
+.table-wrap { overflow: auto; background: #fff; border: 0.5px solid #ddd; border-radius: 10px; max-height: calc(100vh - 260px); }
 table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
 #th-name { width: 200px; min-width: 80px; max-width: 600px; }
 thead tr:first-child th { border-bottom: 0.5px solid #eee; }
 thead tr:last-child th { border-bottom: 0.5px solid #e0e0e0; }
+thead { position: sticky; top: 0; z-index: 10; background: #fff; }
 th { padding: 7px 6px; font-weight: 500; color: #888; text-align: right; white-space: nowrap; user-select: none; }
 th.sortable { cursor: pointer; }
 th.sortable:hover { color: #333; }
@@ -110,13 +111,10 @@ input.order-qty.has-value { background: #eafaf1; border-color: #1e8449; }
 <body>
 <h1>発注判断補助ツール</h1>
 
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('order')">発注判断</div>
-  <div class="tab" onclick="switchTab('trend')">週次推移</div>
-</div>
+
 
 <!-- 発注判断タブ -->
-<div id="tab-order" class="tab-content active">
+<div id="tab-order">
 <div class="stats">
   <div class="stat"><div class="stat-label">総SKU数</div><div class="stat-value" id="stat-total">—</div></div>
   <div class="stat"><div class="stat-label">販売中SKU</div><div class="stat-value" id="stat-active">—</div></div>
@@ -169,36 +167,67 @@ input.order-qty.has-value { background: #eafaf1; border-color: #1e8449; }
     <option value="critical">🔴 マジで早急に要改善</option>
     <option value="warning">🟡 要改善</option>
     <option value="mild">🟢 余裕あれば要改善</option>
+    <option value="up">📈 急増</option>
+    <option value="down">📉 急減</option>
   </select>
   <input type="text" id="search" placeholder="商品名 / SKUコードで絞り込み" oninput="renderOrderTable()">
 </div>
 
 <div class="table-wrap">
 <table>
-  <thead>
+<colgroup>
+  <col style="width:70px">  <!-- SKUコード -->
+  <col>                     <!-- 商品名（残り全部） -->
+  <col style="width:44px">  <!-- 発注数 -->
+  <col style="width:36px">  <!-- 在庫 -->
+  <col style="width:36px">  <!-- 週計 -->
+  <col style="width:36px">  <!-- うちセット週 -->
+  <col style="width:36px">  <!-- 月計 -->
+  <col style="width:36px">  <!-- うちセット月 -->
+  <col style="width:36px">  <!-- 週次1 -->
+  <col style="width:36px">  <!-- 週次2 -->
+  <col style="width:36px">  <!-- 週次3 -->
+  <col style="width:36px">  <!-- 週次4 -->
+  <col style="width:44px">  <!-- 前週比 -->
+  <col style="width:36px">  <!-- 3ヶ月 -->
+  <col style="width:36px">  <!-- 半年 -->
+  <col style="width:36px">  <!-- 残週数 -->
+  <col style="width:48px">  <!-- 状態 -->
+</colgroup>
+<thead>
     <tr>
-      <th rowspan="2" class="sortable" onclick="sortBy('code')" style="width:90px;min-width:90px;max-width:90px;">SKUコード <span class="sort-arrow" id="arr-code">▲▼</span></th>
-      <th rowspan="2" style="text-align:left;" class="resizable" id="th-name">商品名 <button class="col-filter-btn" id="name-filter-btn" onclick="toggleNameFilter(event)">▼</button><div class="resize-handle" onmousedown="startResize(event,'th-name')"></div></th>
-      <th rowspan="2" style="width:52px;min-width:52px;max-width:52px;">発注数</th>
-      <th rowspan="2" class="sortable" onclick="sortBy('zaiko')" style="width:46px;min-width:46px;max-width:46px;">在庫 <span class="sort-arrow" id="arr-zaiko">▲▼</span></th>
-      <th colspan="2" class="group-header">週</th>
-      <th colspan="2" class="group-header">月</th>
-      <th class="group-header" style="border-left:0.5px solid #eee;border-right:0.5px solid #eee;">3ヶ月</th>
-      <th class="group-header" style="border-right:0.5px solid #eee;">半年</th>
-      <th rowspan="2" class="sortable" onclick="sortBy('remaining')" style="width:52px;min-width:52px;max-width:52px;">残週数 <span class="sort-arrow" id="arr-remaining">▲</span></th>
-      <th rowspan="2" class="sortable" onclick="sortBy('status')" style="width:68px;min-width:68px;max-width:68px;text-align:center;">状態 <span class="sort-arrow" id="arr-status">▲▼</span></th>
+      <th rowspan="2" class="sortable" onclick="sortBy('code')" style="width:70px;">SKUコード <span class="sort-arrow" id="arr-code">▲▼</span></th>
+      <th rowspan="2" style="text-align:left;min-width:120px;" class="resizable" id="th-name">商品名 <button class="col-filter-btn" id="name-filter-btn" onclick="toggleNameFilter(event)">▼</button><div class="resize-handle" onmousedown="startResize(event,'th-name')"></div></th>
+      <th rowspan="2" style="width:44px;">発注数</th>
+      <th rowspan="2" class="sortable" onclick="sortBy('zaiko')" style="width:36px;">在庫 <span class="sort-arrow" id="arr-zaiko">▲▼</span></th>
+      <th colspan="2" class="group-header" style="border-left:0.5px solid #eee;border-right:0.5px solid #eee;">週</th>
+      <th colspan="2" class="group-header" style="border-right:0.5px solid #eee;">月</th>
+      <th class="group-header" id="wk-gh-0" style="border-left:0.5px solid #eee;"></th>
+      <th class="group-header" id="wk-gh-1"></th>
+      <th class="group-header" id="wk-gh-2"></th>
+      <th class="group-header" id="wk-gh-3"></th>
+      <th class="group-header" style="border-right:0.5px solid #eee;">前週比</th>
+      <th colspan="1" class="group-header" style="border-right:0.5px solid #eee;">3ヶ月</th>
+      <th colspan="1" class="group-header" style="border-right:0.5px solid #eee;">半年</th>
+      <th rowspan="2" class="sortable" onclick="sortBy('remaining')" style="width:36px;">残週数 <span class="sort-arrow" id="arr-remaining">▲</span></th>
+      <th rowspan="2" class="sortable" onclick="sortBy('status')" style="width:48px;text-align:center;">状態 <span class="sort-arrow" id="arr-status">▲▼</span></th>
     </tr>
     <tr>
-      <th class="sortable sub" onclick="sortBy('total7')" style="width:46px;min-width:46px;max-width:46px;border-left:0.5px solid #eee;">週計 <span class="sort-arrow" id="arr-total7">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('extra7')" style="width:46px;min-width:46px;max-width:46px;border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra7">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('total30')" style="width:46px;min-width:46px;max-width:46px;border-left:0.5px solid #eee;">月計 <span class="sort-arrow" id="arr-total30">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('extra30')" style="width:46px;min-width:46px;max-width:46px;border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra30">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('avg13')" style="width:46px;min-width:46px;max-width:46px;border-left:0.5px solid #eee;">週平均 <span class="sort-arrow" id="arr-avg13">▲▼</span></th>
-      <th class="sortable sub" onclick="sortBy('avg26')" style="width:46px;min-width:46px;max-width:46px;border-right:0.5px solid #eee;">週平均 <span class="sort-arrow" id="arr-avg26">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('total7')" style="width:36px;border-left:0.5px solid #eee;">週計 <span class="sort-arrow" id="arr-total7">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('extra7')" style="width:36px;border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra7">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('total30')" style="width:36px;border-left:0.5px solid #eee;">月計 <span class="sort-arrow" id="arr-total30">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('extra30')" style="width:36px;border-right:0.5px solid #eee;">うちセット <span class="sort-arrow" id="arr-extra30">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('wk0')" id="wk-h-0" style="border-left:0.5px solid #eee;font-size:11px;"><span class="sort-arrow" id="arr-wk0">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('wk1')" id="wk-h-1" style="font-size:11px;"><span class="sort-arrow" id="arr-wk1">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('wk2')" id="wk-h-2" style="font-size:11px;"><span class="sort-arrow" id="arr-wk2">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('wk3')" id="wk-h-3" style="font-size:11px;"><span class="sort-arrow" id="arr-wk3">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('wow')" style="width:60px;border-right:0.5px solid #eee;font-size:11px;">前週比 <span class="sort-arrow" id="arr-wow">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('avg13')" style="width:36px;border-right:0.5px solid #eee;">週平均 <span class="sort-arrow" id="arr-avg13">▲▼</span></th>
+      <th class="sortable sub" onclick="sortBy('avg26')" style="width:36px;border-right:0.5px solid #eee;">週平均 <span class="sort-arrow" id="arr-avg26">▲▼</span></th>
     </tr>
   </thead>
   <tbody id="order-table-body">
-    <tr><td colspan="12" class="empty">販売データCSVを読み込んでください</td></tr>
+    <tr><td colspan="16" class="empty">販売データCSVを読み込んでください</td></tr>
   </tbody>
 </table>
 </div>
@@ -209,43 +238,7 @@ input.order-qty.has-value { background: #eafaf1; border-color: #1e8449; }
 </div>
 </div>
 
-<!-- 週次推移タブ -->
-<div id="tab-trend" class="tab-content">
-<div class="week-info">
-  <div class="week-info-row">
-    <span style="font-size:13px;font-weight:500;">蓄積データ</span>
-    <div class="week-chips" id="week-chips"><span style="color:#aaa;font-size:12px;">データなし</span></div>
-    <button onclick="clearStorage()" style="font-size:12px;padding:4px 10px;margin-left:auto;">データをリセット</button>
-  </div>
-  <div class="storage-bar" id="storage-bar"></div>
-</div>
 
-<div class="controls">
-  <label>表示週数</label>
-  <select id="trend-weeks" onchange="renderTrendTable()">
-    <option value="4">直近4週</option>
-    <option value="8">直近8週</option>
-    <option value="12">直近12週</option>
-  </select>
-  <label style="margin-left:8px;">フラグ</label>
-  <select id="trend-filter" onchange="renderTrendTable()">
-    <option value="all">全件</option>
-    <option value="up">急増のみ</option>
-    <option value="down">急減のみ</option>
-    <option value="flagged">急増・急減</option>
-  </select>
-  <input type="text" id="trend-search" placeholder="商品名 / SKUコードで絞り込み" oninput="renderTrendTable()" style="width:200px;">
-</div>
-
-<div class="table-wrap">
-  <table id="trend-table">
-    <thead id="trend-thead"></thead>
-    <tbody id="trend-tbody">
-      <tr><td colspan="5" class="empty">販売データを読み込むと週次推移が表示されます</td></tr>
-    </tbody>
-  </table>
-</div>
-</div>
 
 <div class="filter-popup" id="name-filter-popup">
   <input type="text" id="name-filter-search" placeholder="商品名を検索..." oninput="renderNameFilterList()">
@@ -263,16 +256,12 @@ const MAX_WEEKS = 12;
 
 let salesData = {}, setMap = {}, allData = [], parentCodes = new Set();
 let orderQty = {};
+let jsonImported = false; // JSONインポートした週のみ保存するフラグ
 let sortKey = 'remaining', sortAsc = true;
 let selectedNames = new Set(), nameFilterActive = false;
 let weeklyHistory = [];
 
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['order','trend'][i] === name));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'trend') renderTrendTable();
-}
+
 
 function parseCSVText(text) {
   // クォート内の改行も正しく処理するCSVパーサー
@@ -359,7 +348,7 @@ function loadSales(file) {
     document.getElementById('sales-status').textContent = '✓ ' + Object.keys(salesData).length + '件';
     selectedNames = new Set(); nameFilterActive = false;
     document.getElementById('name-filter-btn').classList.remove('active');
-    saveWeeklySnapshot(dateStr);
+    if (jsonImported) saveWeeklySnapshot(dateStr);
     compute();
   });
 }
@@ -391,14 +380,8 @@ function loadStorage() {
 }
 
 function updateWeekChips() {
-  const el = document.getElementById('week-chips');
-  if (!weeklyHistory.length) { el.innerHTML = '<span style="color:#aaa;font-size:12px;">データなし</span>'; return; }
-  el.innerHTML = weeklyHistory.map((w,i) =>
-    `<span class="week-chip ${i === weeklyHistory.length-1 ? 'latest' : ''}">${w.date}</span>`
-  ).join('');
-  document.getElementById('storage-bar').textContent = `${weeklyHistory.length}週分保存済 / 最大12週`;
   const jsStatus = document.getElementById('json-status');
-  if (jsStatus) jsStatus.textContent = weeklyHistory.length > 0 ? '✓ ' + weeklyHistory.length + '週分読込済' : '';
+  if (jsStatus) jsStatus.textContent = weeklyHistory.length > 0 ? '✓ ' + weeklyHistory.length + '週分読込済' + (jsonImported ? '（保存有効）' : '（保存無効）') : '';
 }
 
 function clearStorage() {
@@ -406,7 +389,6 @@ function clearStorage() {
   localStorage.removeItem(STORAGE_KEY);
   weeklyHistory = [];
   updateWeekChips();
-  renderTrendTable();
 }
 
 function loadSet(file) {
@@ -465,6 +447,18 @@ function compute() {
       const sum26 = weeks26.reduce((s,w) => s + (w.data[code]?.total7 || 0), 0);
       avg26 = Math.round(sum26 / weeks26.length * 10) / 10;
     }
+    // 週次推移（直近4週）とWoW計算
+    const trendWeeks = weeklyHistory.slice(-4).map(w => w.data[code]?.total7 ?? null);
+    const latest = trendWeeks[trendWeeks.length - 1];
+    const prev   = trendWeeks[trendWeeks.length - 2];
+    let wow = null, trendFlag = '';
+    if (latest !== null && prev !== null && prev > 0) {
+      wow = Math.round((latest - prev) / prev * 100);
+      if (latest >= 3 && wow >= 50)  trendFlag = 'up';
+      if (latest >= 3 && wow <= -50) trendFlag = 'down';
+    } else if (latest !== null && prev === 0 && latest >= 3) {
+      wow = null; trendFlag = 'up';
+    }
     allData.push({
       code, name: d.name, zaiko: d.zaiko,
       uri7: d.uri7, uri30: d.uri30,
@@ -472,7 +466,7 @@ function compute() {
       total7:  d.uri7  + extra7,
       total30: d.uri30 + extra30,
       isHidden: hideCodes.has(code),
-      avg13, avg26,
+      avg13, avg26, trendWeeks, wow, trendFlag,
     });
   }
   document.getElementById('export-btn').style.display = 'inline-block';
@@ -494,6 +488,13 @@ function renderOrderTable() {
   const filter = document.getElementById('filter').value;
   const search = document.getElementById('search').value.toLowerCase();
   let urgent = 0, zero = 0, active = 0, critical = 0, warning = 0, mild = 0;
+
+  // 週次グループヘッダーの日付を更新
+  const wkDates = weeklyHistory.slice(-4).map(w => w.date.slice(5));
+  for (let i = 0; i < 4; i++) {
+    const gh = document.getElementById('wk-gh-' + i);
+    if (gh) gh.textContent = wkDates[i] || '';
+  }
 
   const basisMode = document.getElementById('basis-mode').value;
   const rows = allData.map(d => {
@@ -528,10 +529,11 @@ function renderOrderTable() {
     if (d.isHidden) return false;
     if (filter === 'urgent') return d.isActive && d.remaining <= thr;
     if (filter === 'active') return d.isActive;
-    // 要改善：在庫あり（zaiko>0）で販売数が少ない商品
-    if (filter === 'critical') return d.zaiko > 0 && d.total30 === 0; // 過去30日販売ゼロ
-    if (filter === 'warning')  return d.zaiko > 0 && d.total7 === 0 && d.remaining > 52; // 残1年以上
-    if (filter === 'mild')     return d.zaiko > 0 && d.remaining > 26 && d.remaining < 9999; // 残半年以上
+    if (filter === 'critical') return d.zaiko > 0 && d.total30 === 0;
+    if (filter === 'warning')  return d.zaiko > 0 && d.total7 === 0 && d.remaining > 52;
+    if (filter === 'mild')     return d.zaiko > 0 && d.remaining > 26 && d.remaining < 9999;
+    if (filter === 'up')   return d.trendFlag === 'up';
+    if (filter === 'down') return d.trendFlag === 'down';
     return true;
   });
   if (search) filtered = filtered.filter(d => d.name.toLowerCase().includes(search) || d.code.toLowerCase().includes(search));
@@ -544,7 +546,7 @@ function renderOrderTable() {
     return typeof av === 'string' ? (sortAsc ? av.localeCompare(bv) : bv.localeCompare(av)) : (sortAsc ? av - bv : bv - av);
   });
 
-  ['code','zaiko','total7','extra7','total30','extra30','avg13','avg26','remaining','status'].forEach(k => {
+  ['code','zaiko','total7','extra7','total30','extra30','avg13','avg26','wow','remaining','status'].forEach(k => {
     const el = document.getElementById('arr-' + k);
     if (!el) return;
     el.textContent = sortKey === k ? (sortAsc ? '▲' : '▼') : '▲▼';
@@ -552,7 +554,7 @@ function renderOrderTable() {
   });
 
   const tbody = document.getElementById('order-table-body');
-  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="12" class="empty">該当なし</td></tr>'; return; }
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="16" class="empty">該当なし</td></tr>'; return; }
 
   tbody.innerHTML = filtered.slice(0, 500).map(d => {
     const remText  = d.remaining === 999 ? '—' : Math.round(d.remaining) + '週';
@@ -566,13 +568,23 @@ function renderOrderTable() {
     const e30disp = d.extra30 > 0 ? d.extra30 : '—';
     const avg13disp = d.avg13 !== null ? d.avg13 : '—';
     const avg26disp = d.avg26 !== null ? d.avg26 : '—';
+    const trendBadge = d.trendFlag === 'up'   ? '<span style="font-size:10px;background:#eafaf1;color:#1e8449;padding:1px 5px;border-radius:3px;margin-left:4px;">急増</span>'
+                     : d.trendFlag === 'down' ? '<span style="font-size:10px;background:#fdecea;color:#c0392b;padding:1px 5px;border-radius:3px;margin-left:4px;">急減</span>' : '';
+    const wowDisp = d.wow !== null ? (d.wow > 0 ? '+' : '') + d.wow + '%' : d.trendFlag === 'up' ? '新規' : '—';
+    const wowColor = d.trendFlag === 'up' ? 'color:#1e8449;font-weight:500;' : d.trendFlag === 'down' ? 'color:#c0392b;font-weight:500;' : 'color:#888;';
+    const wkCells = (d.trendWeeks || [null,null,null,null]).map((v,i) => {
+      const bd = i === 0 ? 'border-left:0.5px solid #eee;' : i === 3 ? 'border-right:0.5px solid #eee;' : '';
+      return `<td style="color:#888;font-size:11px;${bd}">${v !== null ? v : '—'}</td>`;
+    }).join('');
     return `<tr>
       <td title="${d.code}">${d.code}</td>
-      <td title="${d.name}">${d.name}${setTag}</td>
+      <td title="${d.name}">${d.name}${setTag}${trendBadge}</td>
       <td><input type="number" class="order-qty${orderQty[d.code] ? ' has-value' : ''}" min="0" value="${orderQty[d.code] || ''}" placeholder="" oninput="setOrderQty('${d.code}', this.value, this)" onchange="setOrderQty('${d.code}', this.value, this)"></td>
       <td>${d.zaiko.toLocaleString()}</td>
       <td>${d.total7}</td><td>${e7disp}</td>
       <td>${d.total30}</td><td>${e30disp}</td>
+      ${wkCells}
+      <td style="${wowColor}">${wowDisp}</td>
       <td>${avg13disp}</td><td>${avg26disp}</td>
       <td class="${remClass}">${remText}</td>
       <td>${badge}</td>
@@ -586,98 +598,6 @@ function sortBy(key) {
   renderOrderTable();
 }
 
-function renderTrendTable() {
-  if (!weeklyHistory.length) {
-    document.getElementById('trend-thead').innerHTML = '';
-    document.getElementById('trend-tbody').innerHTML = '<tr><td colspan="5" class="empty">販売データを読み込むと週次推移が表示されます</td></tr>';
-    return;
-  }
-
-  const nWeeks    = parseInt(document.getElementById('trend-weeks').value);
-  const tFilter   = document.getElementById('trend-filter').value;
-  const tSearch   = document.getElementById('trend-search').value.toLowerCase();
-  const weeks     = weeklyHistory.slice(-nWeeks);
-  const latestIdx = weeks.length - 1;
-
-  // 全SKUを収集
-  const allCodes = new Set();
-  weeks.forEach(w => Object.keys(w.data).forEach(c => allCodes.add(c)));
-
-  // 各SKUの週次データを構築
-  const rows = [];
-  for (const code of allCodes) {
-    const name = weeks.map(w => w.data[code]?.name).filter(Boolean).pop() || code;
-    const vals = weeks.map(w => w.data[code]?.total7 ?? null);
-    const latest = vals[latestIdx];
-    const prev   = vals[latestIdx - 1];
-
-    // 足切り：直近週計3未満はフラグ対象外
-    let flag = '';
-    if (latest !== null && prev !== null && latest >= 3) {
-      const ratio = prev === 0 ? (latest > 0 ? Infinity : 0) : (latest - prev) / prev;
-      if (ratio >= 0.5)       flag = 'up';
-      else if (ratio <= -0.5) flag = 'down';
-    }
-
-    if (tFilter === 'up'      && flag !== 'up')   continue;
-    if (tFilter === 'down'    && flag !== 'down')  continue;
-    if (tFilter === 'flagged' && !flag)            continue;
-    if (tSearch && !name.toLowerCase().includes(tSearch) && !code.toLowerCase().includes(tSearch)) continue;
-
-    rows.push({ code, name, vals, flag, latest: latest ?? 0 });
-  }
-
-  rows.sort((a, b) => {
-    if (a.flag && !b.flag) return -1;
-    if (!a.flag && b.flag) return 1;
-    return b.latest - a.latest;
-  });
-
-  // ヘッダー
-  const thWeeks = weeks.map((w, i) =>
-    `<th style="text-align:right;width:60px;${i===latestIdx?'font-weight:500;color:#1a1a1a;':''}">${w.date.slice(5)}</th>`
-  ).join('');
-  document.getElementById('trend-thead').innerHTML = `<tr>
-    <th style="width:110px;text-align:left;">SKUコード</th>
-    <th style="text-align:left;">商品名</th>
-    ${thWeeks}
-    <th style="width:60px;text-align:center;">前週比</th>
-  </tr>`;
-
-  if (!rows.length) {
-    document.getElementById('trend-tbody').innerHTML = '<tr><td colspan="' + (weeks.length+3) + '" class="empty">該当なし</td></tr>';
-    return;
-  }
-
-  document.getElementById('trend-tbody').innerHTML = rows.slice(0, 300).map(d => {
-    const latest = d.vals[latestIdx];
-    const prev   = d.vals[latestIdx - 1];
-    let ratioDisp = '—', ratioClass = 'trend-flat', flagBadge = '';
-    if (latest !== null && prev !== null) {
-      if (prev === 0 && latest > 0) { ratioDisp = '新規'; ratioClass = 'trend-up'; }
-      else if (prev === 0) { ratioDisp = '—'; }
-      else {
-        const pct = Math.round((latest - prev) / prev * 100);
-        ratioDisp = (pct > 0 ? '+' : '') + pct + '%';
-        ratioClass = pct >= 50 ? 'trend-up' : pct <= -50 ? 'trend-down' : 'trend-flat';
-      }
-    }
-    if (d.flag === 'up')   flagBadge = ' <span class="badge badge-up">急増</span>';
-    if (d.flag === 'down') flagBadge = ' <span class="badge badge-down">急減</span>';
-
-    const tdWeeks = d.vals.map((v, i) => {
-      const style = i === latestIdx ? 'font-weight:500;' : 'color:#888;';
-      return `<td style="text-align:right;${style}">${v !== null ? v : '—'}</td>`;
-    }).join('');
-
-    return `<tr>
-      <td style="font-family:monospace;font-size:11px;color:#888;" title="${d.code}">${d.code}</td>
-      <td title="${d.name}">${d.name}${flagBadge}</td>
-      ${tdWeeks}
-      <td style="text-align:center;" class="${ratioClass}">${ratioDisp}</td>
-    </tr>`;
-  }).join('');
-}
 
 function toggleNameFilter(e) {
   e.stopPropagation();
@@ -847,11 +767,12 @@ function importJSON(file) {
       while (merged.length > MAX_WEEKS) merged.shift();
       weeklyHistory = merged;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(weeklyHistory));
+      jsonImported = true;
       updateWeekChips();
-      renderTrendTable();
+      if (allData.length) compute();
       alert('インポートしました（' + weeklyHistory.length + '週分）');
-    } catch(e) {
-      alert('インポートに失敗しました。正しいJSONファイルか確認してください。');
+    } catch(err) {
+      alert('インポートエラー: ' + err.message);
     }
   };
   reader.readAsText(file);
